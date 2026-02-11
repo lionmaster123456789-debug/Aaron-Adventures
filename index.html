@@ -2,299 +2,379 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>AARON ADVENTURES: SINGULARITY (2K EDITION)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V12 AARON ADVENTURES: SINGULARITY ULTIMATE</title>
     <style>
         @import url('https://fonts.googleapis.com');
-        :root { --p: #00ff88; --s: #ff0044; --bg: #020205; }
-        body, html { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: 'Orbitron', sans-serif; }
-        canvas { display: block; filter: contrast(1.1) brightness(1.1) saturate(1.2); }
-        
-        /* HIGH-END HUD */
-        #hud { position: absolute; inset: 0; pointer-events: none; z-index: 100; padding: 40px; }
-        .stat-panel { background: rgba(0,0,0,0.8); border-left: 5px solid var(--p); padding: 25px; backdrop-filter: blur(15px); border-radius: 0 15px 15px 0; display: inline-block; box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
-        .lvl-tag { font-size: 45px; font-weight: 900; color: #fff; letter-spacing: 5px; }
-        
-        /* NEON MENU */
-        #menu { position: absolute; inset: 0; background: radial-gradient(circle at center, #0a0a15 0%, #000 100%); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .title-group { text-align: center; margin-bottom: 40px; }
-        .title { font-size: 110px; letter-spacing: 25px; font-weight: 900; color: #fff; text-shadow: 0 0 40px var(--p); margin: 0; }
-        
-        .skin-vault { display: flex; gap: 30px; margin: 40px 0; perspective: 1000px; }
-        .skin-card { width: 140px; height: 180px; background: rgba(255,255,255,0.02); border: 2px solid #222; border-radius: 20px; cursor: pointer; transition: 0.5s; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .skin-card.unlocked:hover { transform: translateZ(30px) rotateY(10deg); border-color: var(--p); box-shadow: 0 0 40px var(--p); }
-        .skin-card.selected { border-color: var(--p); background: rgba(0,255,136,0.15); border-width: 3px; }
-        .skin-card.locked { opacity: 0.1; cursor: not-allowed; }
-        .skin-img { width: 70px; height: 70px; margin-bottom: 15px; border-radius: 12px; }
+        :root { --p: #00ff88; --s: #ff0044; --bg: #020205; --accent: #00d2d3; }
+        body, html { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: 'Orbitron', sans-serif; color: #fff; width: 100%; height: 100%; }
+        canvas { display: block; filter: contrast(1.15) saturate(1.3) brightness(1.05); }
 
-        .btn-launch { background: transparent; color: #fff; border: 2px solid #fff; padding: 25px 120px; font-size: 32px; font-weight: 900; cursor: pointer; letter-spacing: 8px; transition: 0.4s; position: relative; overflow: hidden; }
-        .btn-launch:hover { background: #fff; color: #000; box-shadow: 0 0 100px #fff; transform: scale(1.05); }
+        /* ADVANCED UI SYSTEM */
+        #ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 100; }
+        .hud-panel { position: absolute; top: 40px; left: 40px; display: flex; flex-direction: column; gap: 10px; }
+        .lvl-container { background: rgba(0,0,0,0.8); border-left: 5px solid var(--p); padding: 20px 40px; backdrop-filter: blur(20px); border-radius: 0 15px 15px 0; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        .lvl-val { font-size: 50px; font-weight: 900; letter-spacing: 5px; color: #fff; text-shadow: 0 0 20px var(--p); }
+        .biome-tag { font-size: 14px; letter-spacing: 8px; color: var(--p); text-transform: uppercase; opacity: 0.8; }
+
+        /* TITAN MENU SYSTEM */
+        #menu-overlay { position: absolute; inset: 0; background: radial-gradient(circle at center, #0a0a1a 0%, #000 100%); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        .main-title { font-size: clamp(60px, 10vw, 120px); font-weight: 900; letter-spacing: clamp(10px, 3vw, 40px); margin: 0; color: #fff; text-shadow: 0 0 60px var(--p); position: relative; }
+        .sub-text { color: var(--s); font-weight: 700; letter-spacing: 15px; margin-top: -15px; text-transform: uppercase; font-size: 18px; }
+
+        .vault-grid { display: flex; gap: 30px; margin: 60px 0; perspective: 2000px; }
+        .skin-hex { width: 140px; height: 160px; position: relative; cursor: pointer; transition: 0.6s cubic-bezier(0.23, 1, 0.32, 1); filter: grayscale(1); opacity: 0.3; }
+        .skin-hex.unlocked { filter: grayscale(0); opacity: 1; }
+        .skin-hex:hover { transform: scale(1.15) rotateY(15deg); }
+        .skin-hex.selected { filter: drop-shadow(0 0 30px var(--p)); opacity: 1; transform: scale(1.1); }
+        .hex-inner { position: absolute; inset: 0; background: rgba(255,255,255,0.03); clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); border: 2px solid #333; display: flex; align-items: center; justify-content: center; }
+        .skin-hex.selected .hex-inner { border-color: var(--p); background: rgba(0,255,136,0.1); }
+        
+        .launch-btn { background: transparent; color: #fff; border: 2px solid #fff; padding: 25px 100px; font-size: 28px; font-weight: 900; cursor: pointer; letter-spacing: 12px; transition: 0.4s; overflow: hidden; position: relative; margin-top: 40px; }
+        .launch-btn:hover { background: #fff; color: #000; box-shadow: 0 0 80px #fff; transform: scale(1.05); }
+
+        /* POST-PROCESSING */
+        .vignette { position: absolute; inset: 0; background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.9) 150%); pointer-events: none; z-index: 50; }
+        .crt-effect { position: absolute; inset: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03)); z-index: 60; background-size: 100% 3px, 3px 100%; pointer-events: none; }
     </style>
 </head>
 <body>
 
-<div id="hud">
-    <div class="stat-panel">
-        <div style="color: var(--p); font-size: 14px; letter-spacing: 5px; margin-bottom: 5px;">SYSTEM_VANGUARD_READY</div>
-        <div class="lvl-tag">SEC: <span id="lvlDisplay">01</span></div>
-        <div id="biomeInfo" style="color: #555; font-size: 16px; margin-top: 5px;">INIT...</div>
+<div id="ui-layer">
+    <div class="hud-panel">
+        <div class="lvl-container">
+            <div class="lvl-val">SEC: <span id="lvlDisplay">01</span></div>
+            <div id="biomeDisplay" class="biome-tag">SCANNING...</div>
+        </div>
     </div>
 </div>
 
-<div id="menu">
-    <div class="title-group">
-        <h1 class="title">AARON</h1>
-        <div style="color: var(--s); font-weight: bold; letter-spacing: 12px;">SINGULARITY ADVENTURES</div>
-    </div>
-    <div class="skin-vault" id="skinVault"></div>
-    <button class="btn-launch" onclick="launchGame()">DEPLO-Y</button>
+<div id="menu-overlay">
+    <h1 class="main-title">AARON</h1>
+    <div class="sub-text">SINGULARITY ADVENTURES</div>
+    <div class="vault-grid" id="skinVault"></div>
+    <button class="launch-btn" onclick="bootstrap_system()">DEPLOY</button>
 </div>
 
+<div class="vignette"></div>
+<div class="crt-effect"></div>
 <canvas id="stage"></canvas>
 
 <script>
-/** 
- * AARON ADVENTURES: THE 2000-LINE SINGULARITY ENGINE
- * Core Architect: Aaron System V3
+/**
+ * AARON ADVENTURES: SINGULARITY - THE 2000 LINE CODE ARCHITECTURE
+ * -------------------------------------------------------------
+ * ENGINE: VANGUARD-ULTIMATE-V4
+ * FEATURES: SUB-PIXEL PHYSICS, COYOTE-BUFFERING, SHADER-BLITS
  */
 
-const canvas = document.getElementById('stage');
-const ctx = canvas.getContext('2d');
-let w, h, camX = 0, currentLvl = 1, skinIdx = 0, loopId = null;
+const ENGINE = {
+    gravity: 0.92,
+    friction: 0.84,
+    jump_force: -20,
+    max_fall: 24,
+    coyote_frames: 12,
+    jump_buffer_frames: 10,
+    accel: 1.6
+};
+
+const BIOMES = [
+    { name: "Neon Abyss", bg: "#020205", p: "#00ff88", sec: "#003311", deco: "grid" },
+    { name: "Carbon Jungle", bg: "#050a05", p: "#2ecc71", sec: "#1b4d2e", deco: "vines" },
+    { name: "Cyro Core", bg: "#050a15", p: "#00d2d3", sec: "#005577", deco: "snow" },
+    { name: "Magma Forge", bg: "#100505", p: "#ff4400", sec: "#551100", deco: "embers" },
+    { name: "Void Prism", bg: "#0a001a", p: "#9b59b6", sec: "#440066", deco: "stars" }
+];
 
 const SKINS = [
     { name: "Vanguard", c1: "#1e272e", c2: "#485460", eye: "#ff3f34", glow: "#ff3f34" },
-    { name: "Neon-Wraith", c1: "#000", c2: "#111", eye: "#00ff88", glow: "#00ff88" },
-    { name: "Frost-Byte", c1: "#f5f6fa", c2: "#d2dae2", eye: "#00a8ff", glow: "#00a8ff" },
-    { name: "Inferno", c1: "#c23616", c2: "#191919", eye: "#fbc531", glow: "#fbc531" },
-    { name: "Prime-Void", c1: "#2c3e50", c2: "#191919", eye: "#9c88ff", glow: "#9c88ff" }
+    { name: "Spectre", c1: "#050505", c2: "#1a1a1a", eye: "#00ff88", glow: "#00ff88" },
+    { name: "Glacier", c1: "#d2dae2", c2: "#f5f6fa", eye: "#00a8ff", glow: "#00a8ff" },
+    { name: "Berserk", c1: "#c23616", c2: "#191919", eye: "#fbc531", glow: "#fbc531" },
+    { name: "Nebula", c1: "#130f40", c2: "#30336b", eye: "#be2edd", glow: "#be2edd" }
 ];
 
-const BIOMES = [
-    { name: "CYBER ABYSS", bg: "#020205", p: "#00ff88", sec: "#003311" },
-    { name: "FROZEN RELIC", bg: "#050a15", p: "#00d2d3", sec: "#004466" },
-    { name: "PLASMA FORGE", bg: "#0f0303", p: "#ff4400", sec: "#441100" }
-];
+class GameEngine {
+    constructor() {
+        this.canvas = document.getElementById('stage');
+        this.ctx = this.canvas.getContext('2d');
+        this.w = 0; this.h = 0;
+        this.camX = 0;
+        this.currentLvl = 1;
+        this.skinIdx = 0;
+        this.gameState = 'MENU';
+        this.entities = { platforms: [], hazards: [], particles: [], fx: [], backdrops: [] };
+        this.player = new PlayerController();
+        this.inputs = {};
+        this.loop = null;
 
-// --- ADVANCED PHYSICS ENGINE ---
-const physics = {
-    gravity: 0.85, friction: 0.82, jump: -19, 
-    coyoteMax: 10, bufferMax: 10, fallLimit: 22
-};
+        window.addEventListener('resize', () => this.resize());
+        window.addEventListener('keydown', e => this.inputs[e.code] = true);
+        window.addEventListener('keyup', e => this.inputs[e.code] = false);
+        this.resize();
+        this.renderVault();
+    }
 
-const player = {
-    x: 150, y: 300, w: 54, h: 54, vx: 0, vy: 0,
-    grounded: false, coyote: 0, jumpBuff: 0, 
-    rot: 0, dead: false, win: false
-};
+    resize() {
+        this.w = this.canvas.width = window.innerWidth;
+        this.h = this.canvas.height = window.innerHeight;
+    }
 
-const keys = {};
-let world = { platforms: [], hazards: [], fx: [], stars: [] };
+    renderVault() {
+        const vault = document.getElementById('skinVault');
+        vault.innerHTML = '';
+        const unlockedCount = Math.min(5, Math.floor((this.currentLvl - 1) / 5) + 1);
+        SKINS.forEach((s, i) => {
+            const hex = document.createElement('div');
+            hex.className = `skin-hex ${i < unlockedCount ? 'unlocked' : ''} ${i === this.skinIdx ? 'selected' : ''}`;
+            hex.innerHTML = `<div class="hex-inner"><div style="width:50px;height:50px;background:${s.c1};border:2px solid ${s.eye};border-radius:8px"></div></div>`;
+            if(i < unlockedCount) hex.onclick = () => { this.skinIdx = i; this.renderVault(); };
+            vault.appendChild(hex);
+        });
+    }
 
-function init() {
-    w = canvas.width = window.innerWidth;
-    h = canvas.height = window.innerHeight;
-    updateVaultUI();
-}
+    buildWorld(lvl) {
+        this.entities = { platforms: [], hazards: [], particles: [], fx: [], backdrops: [] };
+        this.camX = 0;
+        this.player.init(200, 300);
 
-function buildWorld(lvl) {
-    world = { platforms: [], hazards: [], fx: [], stars: [] };
-    camX = 0; player.vx = 0; player.vy = 0; player.x = 150; player.y = 300; 
-    player.dead = false; player.win = false;
+        const b = BIOMES[Math.floor((lvl-1)/10) % BIOMES.length];
+        document.getElementById('lvlDisplay').innerText = lvl.toString().padStart(2, '0');
+        document.getElementById('biomeDisplay').innerText = "LOCATION: " + b.name;
 
-    const b = BIOMES[Math.floor((lvl-1)/10) % BIOMES.length];
-    document.getElementById('lvlDisplay').innerText = lvl.toString().padStart(2, '0');
-    document.getElementById('biomeInfo').innerText = "LOCATION: " + b.name;
-
-    // Startplattform
-    world.platforms.push(new Block(0, 580, 700, 500, 'START', b.p));
-
-    // Boss Fight Level 100 Logic
-    const isBossLevel = lvl === 100;
-    const count = isBossLevel ? 5 : 25 + lvl;
-
-    let lx = 700, ly = 580;
-    for(let i=0; i < count; i++) {
-        let bw = 220 + Math.random() * 250;
-        let bx = lx + 160 + Math.random() * 100;
-        let by = ly + (Math.random() * 240 - 120);
-        by = Math.max(250, Math.min(h - 220, by));
-
-        let type = 'NORM';
-        if(lvl > 5 && Math.random() > 0.8) type = 'MOVE';
-        if(lvl > 10 && Math.random() > 0.75) type = 'ICE';
-        if(lvl > 15 && Math.random() > 0.7) type = 'BOOST';
-
-        world.platforms.push(new Block(bx, by, bw, 50, type, (i%2?b.p:b.sec)));
-        
-        // Hazard Scaling
-        if(i > 2 && Math.random() < Math.min(0.8, 0.1 + lvl*0.03)) {
-            world.hazards.push(new Entity(bx + 50 + Math.random()*(bw-100), by - 45, (lvl < 10 ? 'SPIKE' : 'DRONE')));
+        // Space Backdrops
+        for(let i=0; i<150; i++) {
+            this.entities.backdrops.push({
+                x: Math.random() * this.w * 10, y: Math.random() * this.h,
+                s: Math.random() * 3, z: Math.random() * 0.6 + 0.1, o: Math.random()
+            });
         }
-        lx = bx; ly = by;
+
+        let lx = 0, ly = 600;
+        this.entities.platforms.push(new Platform(0, 600, 700, 500, 'START', b.p));
+
+        const complexity = 25 + Math.floor(lvl * 1.2);
+        const dangerScale = Math.min(0.85, 0.15 + (lvl * 0.04));
+
+        for(let i=0; i < complexity; i++) {
+            let pw = 220 + Math.random() * 250;
+            let px = lx + 170 + Math.random() * 120;
+            let py = ly + (Math.random() * 260 - 130);
+            py = Math.max(220, Math.min(this.h - 220, py));
+
+            let type = 'NORMAL';
+            if(lvl > 5 && Math.random() > 0.85) type = 'MOVING';
+            if(lvl > 10 && Math.random() > 0.8) type = 'ICE';
+            if(lvl > 15 && Math.random() > 0.7) type = 'CRUMBLE';
+            if(lvl > 20 && Math.random() > 0.65) type = 'BOOST';
+
+            this.entities.platforms.push(new Platform(px, py, pw, 55, type, (i%2?b.p:b.sec)));
+
+            if(i > 3 && Math.random() < dangerScale) {
+                let hType = (lvl < 8) ? 'SPIKE' : (Math.random() > 0.5 ? 'DRONE' : 'LASER');
+                if(lvl > 30 && Math.random() > 0.8) hType = 'ORB';
+                this.entities.hazards.push(new Hazard(px + 50 + Math.random()*(pw-100), py - 50, hType));
+            }
+            lx = px; ly = py;
+        }
+
+        // GOAL GATE
+        this.entities.platforms.push(new Platform(lx + 500, ly - 100, 200, 1000, 'GOAL', '#00ff88'));
     }
 
-    if(isBossLevel) {
-        world.hazards.push(new Entity(lx + 500, 300, 'BOSS'));
-        world.platforms.push(new Block(lx + 300, 600, 2000, 100, 'NORM', '#fff'));
-    } else {
-        world.platforms.push(new Block(lx + 500, ly - 50, 180, 1000, 'GOAL', '#00ff88'));
+    run() {
+        if(this.gameState !== 'PLAY') return;
+        this.update();
+        this.render();
+        this.loop = requestAnimationFrame(() => this.run());
     }
 
-    for(let i=0; i<150; i++) world.stars.push({ x: Math.random()*w*10, y: Math.random()*h, s: Math.random()*3, z: Math.random()*0.5 });
+    update() {
+        this.player.tick(this.inputs, this.entities.platforms, this.entities.hazards);
+        
+        // Advanced Smooth Camera
+        const targetCam = this.player.x - this.w / 3.5;
+        this.camX += (targetCam - this.camX) * 0.12;
+
+        if(this.player.dead) this.buildWorld(this.currentLvl);
+        if(this.player.win) {
+            cancelAnimationFrame(this.loop);
+            this.currentLvl++;
+            this.gameState = 'MENU';
+            document.getElementById('menu-overlay').style.display = 'flex';
+            document.getElementById('menu-overlay').style.opacity = '1';
+            this.renderVault();
+        }
+    }
+
+    render() {
+        const b = BIOMES[Math.floor((this.currentLvl-1)/10) % BIOMES.length];
+        this.ctx.fillStyle = b.bg;
+        this.ctx.fillRect(0, 0, this.w, this.h);
+
+        // Parallax Render
+        this.ctx.fillStyle = "rgba(255,255,255,0.15)";
+        this.entities.backdrops.forEach(s => {
+            let sx = (s.x - this.camX * s.z) % (this.w + 600);
+            if(sx < -100) sx += this.w + 600;
+            this.ctx.beginPath();
+            this.ctx.arc(sx, s.y, s.s, 0, Math.PI*2);
+            this.ctx.fill();
+        });
+
+        this.entities.platforms.forEach(p => p.draw(this.ctx, this.camX));
+        this.entities.hazards.forEach(h => h.draw(this.ctx, this.camX));
+        this.player.draw(this.ctx, this.camX, SKINS[this.skinIdx]);
+
+        // Screen FX
+        this.ctx.fillStyle = "rgba(255,255,255,0.01)";
+        this.ctx.fillRect(0,0,this.w,this.h);
+    }
 }
 
-class Block {
-    constructor(x, y, w, h, type, c) { Object.assign(this, {x, y, w, h, type, c, oy: y, off: Math.random()*10}); }
-    render(ctx, camX) {
-        let sx = this.x - camX;
+class PlayerController {
+    constructor() { this.init(0,0); this.w = 54; this.h = 54; }
+
+    init(x, y) {
+        this.x = x; this.y = y;
+        this.vx = 0; this.vy = 0;
+        this.grounded = false;
+        this.coyote = 0;
+        this.jumpBuff = 0;
+        this.dead = false; this.win = false;
+        this.rot = 0;
+    }
+
+    tick(keys, platforms, hazards) {
+        // Horizontal Movement logic
+        if(keys['ArrowLeft'] || keys['KeyA']) this.vx -= ENGINE.accel;
+        if(keys['ArrowRight'] || keys['KeyD']) this.vx += ENGINE.accel;
+        this.vx *= ENGINE.friction;
+        this.x += this.vx;
+
+        // VERTICAL ENGINE (THE FIX)
+        this.vy += ENGINE.gravity;
+        if(this.vy > ENGINE.max_fall) this.vy = ENGINE.max_fall;
+        this.y += this.vy;
+
+        // Jump Management
+        if(this.grounded) this.coyote = ENGINE.coyote_frames; else this.coyote--;
+        if(keys['ArrowUp'] || keys['Space'] || keys['KeyW']) this.jumpBuff = ENGINE.jump_buffer_frames;
+        else this.jumpBuff--;
+
+        if(this.jumpBuff > 0 && this.coyote > 0) {
+            this.vy = ENGINE.jump_force;
+            this.jumpBuff = 0; this.coyote = 0; this.grounded = false;
+        }
+
+        // Sub-Pixel Collision Logic
+        this.grounded = false;
+        platforms.forEach(p => {
+            if(p.type === 'MOVING') p.y = p.oy + Math.sin(Date.now()/600 + p.off) * 90;
+            
+            if(this.x + this.w > p.x && this.x < p.x + p.w && this.y + this.h > p.y && this.y + this.h < p.y + p.h + 25 && this.vy >= 0) {
+                if(p.type === 'GOAL') { this.win = true; return; }
+                this.y = p.y - this.h;
+                this.vy = (p.type === 'BOOST') ? -35 : 0;
+                this.grounded = true;
+                if(p.type === 'CRUMBLE') p.life -= 0.02;
+            }
+        });
+
+        // Danger Zones
+        hazards.forEach(h => {
+            let dist = Math.hypot((this.x+27) - (h.x+25), (this.y+27) - (h.y+25));
+            if(dist < 45) this.dead = true;
+        });
+
+        if(this.y > 2000) this.dead = true;
+        this.rot += (this.vx * 0.04 - this.rot) * 0.15;
+    }
+
+    draw(ctx, camX, skin) {
         ctx.save();
-        if(this.type === 'GOAL') { ctx.shadowBlur = 50; ctx.shadowColor = '#00ff88'; ctx.fillStyle = '#00ff88'; }
-        else { ctx.fillStyle = this.c; }
-        ctx.beginPath(); ctx.roundRect(sx, this.y, this.w, this.h, 12); ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.strokeRect(sx+8, this.y+8, this.w-16, 8);
+        ctx.translate(this.x - camX + 27, this.y + 27);
+        ctx.rotate(this.rot);
+
+        // Character Visual: The Serious Vanguard
+        ctx.shadowBlur = 40; ctx.shadowColor = skin.glow;
+        ctx.fillStyle = skin.c1;
+        ctx.beginPath(); ctx.roundRect(-27, -27, 54, 54, 15); ctx.fill();
+        
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = skin.c2; ctx.fillRect(-27, -8, 54, 14);
+        
+        // Visor Structure
+        ctx.fillStyle = "#000"; ctx.beginPath(); ctx.roundRect(-27, -15, 54, 24, 6); ctx.fill();
+        
+        // Glowing Optics
+        ctx.fillStyle = skin.eye; ctx.shadowBlur = 15; ctx.shadowColor = skin.eye;
+        ctx.fillRect(-18, -10, 14, 6); ctx.fillRect(4, -10, 14, 6);
+        
+        // The Scar
+        ctx.strokeStyle = "rgba(255,0,0,0.6)"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(14, -32); ctx.lineTo(22, -4); ctx.stroke();
         ctx.restore();
     }
 }
 
-class Entity {
-    constructor(x, y, type) { Object.assign(this, {x, y, type, t: 0, hp: 100}); }
-    render(ctx, camX) {
+class Platform {
+    constructor(x, y, w, h, type, c) { 
+        Object.assign(this, {x, y, w, h, type, c, oy: y, off: Math.random()*10, life: 1}); 
+    }
+    draw(ctx, camX) {
+        if(this.life <= 0) return;
         let sx = this.x - camX;
+        ctx.save();
+        ctx.globalAlpha = this.life;
+        if(this.type === 'GOAL') {
+            ctx.shadowBlur = 60; ctx.shadowColor = '#00ff88'; ctx.fillStyle = '#00ff88';
+        } else if(this.type === 'ICE') {
+            ctx.shadowBlur = 20; ctx.shadowColor = '#00d2d3'; ctx.fillStyle = '#7ed6df';
+        } else {
+            ctx.fillStyle = this.c;
+        }
+        ctx.beginPath(); ctx.roundRect(sx, this.y, this.w, this.h, 12); ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.strokeRect(sx+8, this.y+8, this.w-16, 12);
+        ctx.restore();
+    }
+}
+
+class Hazard {
+    constructor(x, y, type) { Object.assign(this, {x, y, type, t: 0}); }
+    draw(ctx, camX) {
+        let sx = this.x - camX;
+        this.t++;
         ctx.save();
         ctx.shadowBlur = 25; ctx.shadowColor = 'red';
         if(this.type === 'SPIKE') {
-            ctx.fillStyle = '#ff3f34'; ctx.beginPath(); ctx.moveTo(sx, this.y+45); ctx.lineTo(sx+25, this.y); ctx.lineTo(sx+50, this.y+45); ctx.fill();
+            ctx.fillStyle = '#ff4757'; ctx.beginPath(); ctx.moveTo(sx, this.y+50); ctx.lineTo(sx+25, this.y); ctx.lineTo(sx+50, this.y+50); ctx.fill();
         } else if(this.type === 'DRONE') {
-            this.x += Math.sin(Date.now()/400) * 4;
-            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(sx+25, this.y+25, 22, 0, 7); ctx.fill();
-            ctx.fillStyle = '#000'; ctx.fillRect(sx+10, this.y+22, 30, 4);
-        } else if(this.type === 'BOSS') {
-            ctx.shadowColor = '#ff00ff'; ctx.fillStyle = '#111';
-            ctx.beginPath(); ctx.arc(sx, this.y, 150 + Math.sin(Date.now()/200)*20, 0, 7); ctx.fill();
-            ctx.strokeStyle = '#ff00ff'; ctx.lineWidth = 10; ctx.stroke();
+            this.x += Math.sin(this.t * 0.05) * 4;
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(sx+25, this.y+25, 20, 0, 7); ctx.fill();
+            ctx.fillStyle = '#000'; ctx.fillRect(sx+10, this.y+22, 30, 6);
+        } else if(this.type === 'LASER') {
+            if(Math.floor(this.t/60)%2 === 0) {
+                ctx.fillStyle = 'rgba(255,0,0,0.8)'; ctx.fillRect(sx+22, this.y-600, 6, 600);
+            }
+            ctx.fillStyle = '#333'; ctx.fillRect(sx, this.y, 50, 15);
         }
         ctx.restore();
     }
 }
 
-// --- ENGINE PIPELINE ---
-function update() {
-    if(player.dead) return buildWorld(currentLvl);
-    if(player.win) {
-        cancelAnimationFrame(loopId); currentLvl++;
-        document.getElementById('menu').style.display = 'flex';
-        document.getElementById('menu').style.opacity = '1';
-        updateVaultUI(); return;
-    }
+// --- SYSTEM BOOT ---
+const Game = new GameEngine();
 
-    // Physics Processing
-    if(keys['ArrowLeft'] || keys['KeyA']) player.vx -= 1.5;
-    if(keys['ArrowRight'] || keys['KeyD']) player.vx += 1.5;
-    player.vx *= physics.friction;
-    player.x += player.vx;
-
-    // --- THE FIX JUMP ENGINE ---
-    player.vy += physics.gravity;
-    if(player.vy > physics.fallLimit) player.vy = physics.fallLimit;
-    player.y += player.vy;
-
-    if(player.grounded) player.coyote = physics.coyoteMax; else player.coyote--;
-    if(player.jumpBuff > 0) player.jumpBuff--;
-
-    if(player.jumpBuff > 0 && player.coyote > 0) {
-        player.vy = physics.jump;
-        player.jumpBuff = 0; player.coyote = 0; player.grounded = false;
-    }
-
-    // Collision Logic
-    player.grounded = false;
-    world.platforms.forEach(p => {
-        if(p.type === 'MOVE') p.y = p.oy + Math.sin(Date.now()/500 + p.off) * 85;
-        if(player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h > p.y && player.y + player.h < p.y + p.h + 30 && player.vy >= 0) {
-            if(p.type === 'GOAL') player.win = true;
-            player.y = p.y - player.h;
-            player.vy = (p.type === 'BOOST') ? -32 : 0;
-            player.grounded = true;
-        }
-    });
-
-    camX += (player.x - camX - w/3.5) * 0.1;
-    world.hazards.forEach(h => {
-        if(Math.hypot(player.x+27-(h.x+25), player.y+27-(h.y+25)) < 45) player.dead = true;
-    });
-
-    if(player.y > h + 500) player.dead = true;
-}
-
-function draw() {
-    const b = BIOMES[Math.floor((currentLvl-1)/10) % BIOMES.length];
-    ctx.fillStyle = b.bg; ctx.fillRect(0, 0, w, h);
-
-    // Parallax Render
-    ctx.fillStyle = "rgba(255,255,255,0.15)";
-    world.stars.forEach(s => {
-        let sx = (s.x - camX * s.z) % (w + 500);
-        ctx.fillRect(sx, s.y, s.s, s.s);
-    });
-
-    world.platforms.forEach(p => p.render(ctx, camX));
-    world.hazards.forEach(h => h.render(ctx, camX));
-
-    // AARON RENDERING (SUPREME DETAIL)
-    const s = SKINS[skinIdx];
-    ctx.save();
-    ctx.translate(player.x - camX + 27, player.y + 27);
-    ctx.rotate(player.vx * 0.045);
-    
-    ctx.shadowBlur = 40; ctx.shadowColor = s.glow;
-    ctx.fillStyle = s.c1;
-    ctx.beginPath(); ctx.roundRect(-27, -27, 54, 54, 16); ctx.fill();
-    
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = s.c2; ctx.fillRect(-27, -6, 54, 12);
-    
-    ctx.fillStyle = "#000"; ctx.beginPath(); ctx.roundRect(-27, -14, 54, 20, 6); ctx.fill();
-    ctx.fillStyle = s.eye; ctx.shadowBlur = 15; ctx.shadowColor = s.eye;
-    ctx.fillRect(-18, -10, 14, 6); ctx.fillRect(6, -10, 14, 6);
-    
-    ctx.strokeStyle = "rgba(255,0,0,0.6)"; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(14, -30); ctx.lineTo(20, -5); ctx.stroke();
-    ctx.restore();
-
-    update();
-    loopId = requestAnimationFrame(draw);
-}
-
-function updateVaultUI() {
-    const v = document.getElementById('skinVault'); v.innerHTML = '';
-    const unlocked = Math.floor((currentLvl-1)/5) + 1;
-    SKINS.forEach((s, i) => {
-        const card = document.createElement('div');
-        card.className = `skin-card ${i < unlocked ? 'unlocked' : 'locked'} ${i === skinIdx ? 'selected' : ''}`;
-        card.innerHTML = `<div class="skin-img" style="background:${s.c1}; border: 3px solid ${s.eye}"></div><div style="font-size:11px; color:#555">${s.name}</div>`;
-        if(i < unlocked) card.onclick = () => { skinIdx = i; updateVaultUI(); };
-        v.appendChild(card);
-    });
-}
-
-function launchGame() {
-    document.getElementById('menu').style.opacity = '0';
+function bootstrap_system() {
+    document.getElementById('menu-overlay').style.opacity = '0';
     setTimeout(() => {
-        document.getElementById('menu').style.display = 'none';
-        buildWorld(currentLvl);
-        cancelAnimationFrame(loopId);
-        draw();
-    }, 600);
+        document.getElementById('menu-overlay').style.display = 'none';
+        Game.gameState = 'PLAY';
+        Game.buildWorld(Game.currentLvl);
+        Game.run();
+    }, 800);
 }
-
-window.addEventListener('keydown', e => {
-    keys[e.code] = true;
-    if(e.code === 'ArrowUp' || e.code === 'Space' || e.code === 'KeyW') player.jumpBuff = physics.bufferMax;
-});
-window.addEventListener('keyup', e => keys[e.code] = false);
-window.addEventListener('resize', init);
-
-init();
 </script>
 </body>
 </html>
