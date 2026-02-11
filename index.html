@@ -2,28 +2,32 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>V4 Aaron Adventures - Ultimate Fix</title>
+    <title>V5 Aaron Adventures - Hybrid Edition</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Arial Black', sans-serif; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: #fff; }
         canvas { display: block; }
-        #ui { position: absolute; top: 20px; left: 20px; color: white; text-shadow: 2px 2px #000; pointer-events: none; z-index: 10; }
-        #menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: white; padding: 40px; text-align: center; border: 4px solid #2ecc71; border-radius: 20px; z-index: 100; }
-        button { background: #2ecc71; border: none; padding: 15px 30px; color: white; font-size: 20px; cursor: pointer; border-radius: 10px; transition: 0.2s; }
-        button:hover { transform: scale(1.1); background: #27ae60; }
+        #ui { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
+        #menu { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; text-align: center; }
+        .skin-container { display: flex; gap: 15px; margin: 25px 0; }
+        .skin-btn { width: 50px; height: 50px; border: 2px solid #555; cursor: pointer; border-radius: 12px; transition: 0.3s; }
+        .skin-btn.locked { opacity: 0.2; filter: grayscale(1); cursor: not-allowed; }
+        .skin-btn.active { border-color: #2ecc71; transform: scale(1.2); box-shadow: 0 0 15px #2ecc71; }
+        button#startBtn { background: #2ecc71; color: white; border: none; padding: 15px 40px; font-size: 22px; border-radius: 30px; cursor: pointer; font-weight: bold; }
+        h1 { font-size: 50px; letter-spacing: 5px; color: #eee; margin: 0; }
     </style>
 </head>
 <body>
 
 <div id="ui">
-    <div style="font-size: 32px;">LEVEL: <span id="lvlDisplay">1</span></div>
-    <div style="font-size: 18px; color: #2ecc71;">MISSION: Erreiche das grüne Portal</div>
+    <div style="font-size: 28px; font-weight: bold;">LEVEL <span id="lvlDisplay">1</span></div>
+    <div id="biomeDisplay" style="color: #888; text-transform: uppercase; letter-spacing: 2px;">Vantablack</div>
 </div>
 
 <div id="menu">
-    <h1 style="color:#2ecc71; font-size: 48px; margin: 0;">AARON ADVENTURES</h1>
-    <p>Der Veteran kehrt zurück.</p>
-    <div id="skinSelect" style="margin: 20px 0; display: flex; gap: 10px; justify-content: center;"></div>
-    <button onclick="startGame()">MISSION STARTEN</button>
+    <h1>AARON ADVENTURES</h1>
+    <p>Wähle deinen Skin (Freigeschaltet alle 10 Level):</p>
+    <div id="skinSelect" class="skin-container"></div>
+    <button id="startBtn" onclick="startGame()">START MISSION</button>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -31,143 +35,107 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-let width, height;
-
-// Spiel-Variablen
+let width, height, cameraX = 0, currentLevel = 1;
 let gameState = 'menu';
-let currentLevel = 1;
-let cameraX = 0;
-let frame = 0;
+let playerSkin = 0;
 
-const player = {
-    x: 100, y: 300, w: 40, h: 40,
-    velX: 0, velY: 0,
-    speed: 7, jumpForce: -16,
-    grounded: false, coyote: 0,
-    skinColor: '#2c3e50'
-};
-
-const BIOMES = [
-    { name: "Dschungel", bg: "#0a2f1f", water: "#3498db", ground: "#27ae60" },
-    { name: "Cyber", bg: "#1a1a2e", water: "#e84393", ground: "#0984e3" },
-    { name: "Frost", bg: "#2d3436", water: "#ffffff", ground: "#dfe6e9" },
-    { name: "Vulkan", bg: "#2c0d0d", water: "#ff7675", ground: "#d63031" }
+// Konfiguration
+const SKINS = [
+    { name: "Shadow", color: "#1a1a1a", eye: "#ff0000" },
+    { name: "Hunter", color: "#2ecc71", eye: "#fff" },
+    { name: "Ice Walker", color: "#00d2d3", eye: "#2c3e50" },
+    { name: "Magma", color: "#e67e22", eye: "#ff0" },
+    { name: "Cyber", color: "#9b59b6", eye: "#0ff" }
 ];
 
-let platforms = [];
-let hazards = [];
-let projectiles = [];
-let particles = [];
+const BIOMES = [
+    { name: "Vantablack", bg: "#050505", ground: "#111", decor: "particles" },
+    { name: "Dschungel", bg: "#0a210f", ground: "#1b4d2e", decor: "waterfall" },
+    { name: "Frost", bg: "#1e272e", ground: "#dff9fb", decor: "snow" },
+    { name: "Lava", bg: "#1a0505", ground: "#c0392b", decor: "bubbles" },
+    { name: "Cyber", bg: "#0f0c29", ground: "#24243e", decor: "grid" }
+];
 
-function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
+const player = { x: 100, y: 300, w: 45, h: 45, velX: 0, velY: 0, speed: 7, jump: -17, grounded: false };
+let platforms = [], hazards = [], projectiles = [], decorations = [];
+
+function resize() { 
+    width = canvas.width = window.innerWidth; 
+    height = canvas.height = window.innerHeight; 
 }
 window.onresize = resize;
 resize();
 
-function initLevel(num) {
-    platforms = [];
-    hazards = [];
-    projectiles = [];
-    particles = [];
-    player.x = 150;
-    player.y = 300;
-    player.velX = 0;
-    player.velY = 0;
+function initLevel(lvl) {
+    platforms = []; hazards = []; projectiles = []; decorations = [];
+    player.x = 150; player.y = 300; player.velX = 0; player.velY = 0;
     cameraX = 0;
     
-    const biome = BIOMES[Math.floor((num-1)/10) % BIOMES.length];
-    document.getElementById('lvlDisplay').innerText = num;
+    const bIndex = Math.floor((lvl-1)/10) % BIOMES.length;
+    const biome = BIOMES[bIndex];
+    document.getElementById('lvlDisplay').innerText = lvl;
+    document.getElementById('biomeDisplay').innerText = biome.name;
 
-    let lastX = 0;
-    let lastY = 500;
-
-    // Startplattform
-    platforms.push({x: 0, y: 550, w: 400, h: 100, type: 'normal'});
-
-    // Generierung
-    for(let i = 0; i < 15 + num; i++) {
-        let pW = 150 + Math.random() * 150;
-        let pX = lastX + 150 + Math.random() * 120;
-        let pY = lastY + (Math.random() * 180 - 90);
-        pY = Math.max(250, Math.min(height - 150, pY));
-
-        platforms.push({x: pX, y: pY, w: pW, h: 30, type: 'normal'});
-
-        // Hindernisse je nach Level-Dichte
-        if(Math.random() > 0.6) {
-            let type = Math.random() > 0.5 ? 'cannon' : 'enemy';
-            hazards.push({x: pX + 50, y: pY - 40, w: 40, h: 40, type: type, dir: 1, timer: 0});
-        }
-        
-        lastX = pX;
-        lastY = pY;
+    // Generiere Hintergrund-Objekte
+    for(let i=0; i<30; i++) {
+        decorations.push({ x: Math.random()*5000, y: Math.random()*height, s: Math.random()*3 + 1 });
     }
 
-    // DAS ZIEL - GRÜN UND SICHTBAR
-    platforms.push({x: lastX + 300, y: lastY - 50, w: 100, h: 100, type: 'goal'});
+    let lastX = 0, lastY = 500;
+    platforms.push({ x: 0, y: 550, w: 400, h: 100, type: 'normal' });
+
+    for(let i=0; i<15 + lvl; i++) {
+        let pW = 160 + Math.random()*120;
+        let pX = lastX + 130 + Math.random()*110;
+        let pY = lastY + (Math.random()*180 - 90);
+        pY = Math.max(200, Math.min(height-150, pY));
+
+        let type = (i > 3 && Math.random() > 0.8) ? 'moving' : 'normal';
+        platforms.push({ x: pX, y: pY, w: pW, h: 35, type: type, oy: pY, off: Math.random()*10 });
+
+        if(Math.random() > 0.6) {
+            hazards.push({ x: pX + 50, y: pY - 45, w: 40, h: 40, type: Math.random() > 0.5 ? 'drone' : 'cannon', t: 0 });
+        }
+        lastX = pX; lastY = pY;
+    }
+    platforms.push({ x: lastX + 300, y: lastY - 50, w: 100, h: 400, type: 'goal' });
+    updateSkinButtons();
 }
 
 function update() {
     if(gameState !== 'playing') return;
-    frame++;
 
-    // Bewegung
     if(keys['ArrowLeft']) player.velX = -player.speed;
     else if(keys['ArrowRight']) player.velX = player.speed;
     else player.velX *= 0.8;
 
-    player.velY += 0.8; // Gravitation
+    player.velY += 0.85;
     player.x += player.velX;
     player.y += player.velY;
-
     cameraX += (player.x - cameraX - width/3) * 0.1;
 
-    // Plattformen
     player.grounded = false;
     platforms.forEach(p => {
-        if(player.x + player.w > p.x && player.x < p.x + p.w &&
-           player.y + player.h > p.y && player.y + player.h < p.y + p.h + 20 && player.velY >= 0) {
-            
-            if(p.type === 'goal') {
-                currentLevel++;
-                initLevel(currentLevel);
-                return;
-            }
-            player.y = p.y - player.h;
-            player.velY = 0;
-            player.grounded = true;
+        if(p.type === 'moving') p.y = p.oy + Math.sin(Date.now()/600 + p.off) * 60;
+        if(player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h > p.y && player.y + player.h < p.y + p.h + 25 && player.velY >= 0) {
+            if(p.type === 'goal') { currentLevel++; initLevel(currentLevel); return; }
+            player.y = p.y - player.h; player.velY = 0; player.grounded = true;
         }
     });
 
-    // Hazards & Kanonen
     hazards.forEach(h => {
         if(h.type === 'cannon') {
-            h.timer++;
-            if(h.timer % 120 === 0) {
-                projectiles.push({x: h.x, y: h.y + 10, vx: -6, vy: 0});
-            }
-        } else {
-            h.x += h.dir * 2;
-            if(Math.random() > 0.98) h.dir *= -1;
+            if(++h.t % 120 === 0) projectiles.push({ x: h.x, y: h.y + 15, vx: -6 });
         }
-        // Hitbox
-        if(Math.abs(player.x - h.x) < 30 && Math.abs(player.y - h.y) < 30) die();
+        if(Math.abs(player.x - h.x) < 35 && Math.abs(player.y - h.y) < 35) initLevel(currentLevel);
     });
 
-    // Projektile
     projectiles.forEach((p, i) => {
         p.x += p.vx;
-        if(Math.abs(player.x - p.x) < 25 && Math.abs(player.y - p.y) < 25) die();
-        if(p.x < cameraX - 100) projectiles.splice(i, 1);
+        if(Math.abs(player.x - p.x) < 25 && Math.abs(player.y - p.y) < 25) initLevel(currentLevel);
     });
 
-    if(player.y > height) die();
-}
-
-function die() {
-    initLevel(currentLevel);
+    if(player.y > height + 100) initLevel(currentLevel);
 }
 
 function draw() {
@@ -175,88 +143,85 @@ function draw() {
     ctx.fillStyle = biome.bg;
     ctx.fillRect(0, 0, width, height);
 
-    // Wasserfälle (Dschungel Biom)
-    if(biome.name === "Dschungel") {
-        ctx.fillStyle = "rgba(52, 152, 219, 0.4)";
-        for(let i=0; i<3; i++) {
-            let wx = (500 + i*800 - cameraX*0.5) % (width + 400) - 200;
-            ctx.fillRect(wx, 0, 100, height);
-            ctx.fillStyle = "white";
-            ctx.fillRect(wx + Math.random()*90, (frame*5)%height, 5, 20);
-        }
-    }
-
-    // Plattformen & Ziel
-    platforms.forEach(p => {
-        if(p.type === 'goal') {
-            ctx.fillStyle = '#2ecc71';
-            ctx.shadowBlur = 30; ctx.shadowColor = '#2ecc71';
-            ctx.fillRect(p.x - cameraX, p.y, p.w, p.h);
-            ctx.strokeStyle = "white"; ctx.lineWidth = 5;
-            ctx.strokeRect(p.x - cameraX + 10, p.y + 10, p.w - 20, p.h - 20);
-            ctx.shadowBlur = 0;
+    // Deko-Objekte
+    ctx.fillStyle = "rgba(255,255,255,0.1)";
+    decorations.forEach(d => {
+        let dx = (d.x - cameraX * 0.3) % 2000;
+        if(biome.decor === "snow") {
+            ctx.beginPath(); ctx.arc(dx, (d.y + Date.now()/20)%height, d.s, 0, Math.PI*2); ctx.fill();
+        } else if(biome.decor === "waterfall") {
+            ctx.fillStyle = "rgba(52, 152, 219, 0.2)";
+            ctx.fillRect(dx, 0, 40, height);
         } else {
-            ctx.fillStyle = biome.ground;
-            ctx.fillRect(p.x - cameraX, p.y, p.w, p.h);
-            ctx.fillStyle = "rgba(0,0,0,0.2)";
-            ctx.fillRect(p.x - cameraX, p.y + 10, p.w, 5);
+            ctx.fillRect(dx, d.y, d.s*2, d.s*2);
         }
     });
 
-    // Gefahren
+    // Plattformen
+    platforms.forEach(p => {
+        ctx.fillStyle = p.type === 'goal' ? '#2ecc71' : biome.ground;
+        if(p.type === 'goal') ctx.shadowBlur = 20, ctx.shadowColor = '#2ecc71';
+        ctx.beginPath(); ctx.roundRect(p.x - cameraX, p.y, p.w, p.h, 5); ctx.fill();
+        ctx.shadowBlur = 0;
+    });
+
+    // Gegner (Verbessert)
     hazards.forEach(h => {
-        ctx.fillStyle = h.type === 'cannon' ? '#34495e' : '#e74c3c';
-        ctx.fillRect(h.x - cameraX, h.y, 40, 40);
-        if(h.type === 'cannon') {
-            ctx.fillStyle = "black";
-            ctx.fillRect(h.x - cameraX - 10, h.y + 10, 20, 15);
-        } else {
-            ctx.fillStyle = "white";
-            ctx.fillRect(h.x - cameraX + 5, h.y + 10, 10, 5); // Augen
-            ctx.fillRect(h.x - cameraX + 25, h.y + 10, 10, 5);
-        }
+        ctx.fillStyle = "#333";
+        ctx.beginPath(); ctx.roundRect(h.x - cameraX, h.y, 40, 40, 8); ctx.fill();
+        ctx.fillStyle = (Date.now() % 400 > 200) ? "#ff0000" : "#600"; // Pulsierender Kern
+        ctx.beginPath(); ctx.arc(h.x - cameraX + 20, h.y + 20, 8, 0, Math.PI*2); ctx.fill();
     });
 
     // Projektile
-    ctx.fillStyle = "yellow";
-    projectiles.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x - cameraX, p.y, 10, 0, Math.PI*2);
-        ctx.fill();
-    });
+    ctx.fillStyle = "#f1c40f";
+    projectiles.forEach(p => { ctx.beginPath(); ctx.arc(p.x - cameraX, p.y, 8, 0, Math.PI*2); ctx.fill(); });
 
-    // Spieler (Seriöser Aaron)
+    // Aaron (Abgerundet & Seriös)
+    const skin = SKINS[playerSkin];
     ctx.save();
-    ctx.translate(player.x - cameraX + 20, player.y + 20);
-    ctx.fillStyle = player.skinColor;
-    ctx.fillRect(-20, -20, 40, 40);
-    ctx.strokeStyle = "black"; ctx.lineWidth = 3; ctx.strokeRect(-20, -20, 40, 40);
+    ctx.translate(player.x - cameraX + 22.5, player.y + 22.5);
+    ctx.fillStyle = skin.color;
+    ctx.beginPath(); ctx.roundRect(-22.5, -22.5, 45, 45, 12); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.stroke();
     // Augen
-    ctx.fillStyle = "white";
-    ctx.fillRect(-12, -15, 10, 4); ctx.fillRect(2, -15, 10, 4);
-    ctx.fillStyle = "red";
-    ctx.fillRect(-8, -14, 3, 3); ctx.fillRect(6, -14, 3, 3);
-    // Narbe
-    ctx.strokeStyle = "rgba(255,0,0,0.5)"; ctx.beginPath(); ctx.moveTo(5, -25); ctx.lineTo(15, -5); ctx.stroke();
+    ctx.fillStyle = skin.eye;
+    ctx.fillRect(-12, -12, 10, 5); ctx.fillRect(4, -12, 10, 5);
     ctx.restore();
 
     update();
     requestAnimationFrame(draw);
 }
 
+function updateSkinButtons() {
+    const container = document.getElementById('skinSelect');
+    container.innerHTML = '';
+    const unlockedCount = Math.floor((currentLevel-1)/10) + 1;
+    SKINS.forEach((s, i) => {
+        const div = document.createElement('div');
+        div.className = `skin-btn ${i >= unlockedCount ? 'locked' : ''} ${i === playerSkin ? 'active' : ''}`;
+        div.style.background = s.color;
+        if(i < unlockedCount) div.onclick = () => { playerSkin = i; updateSkinButtons(); };
+        container.appendChild(div);
+    });
+}
+
 const keys = {};
 window.onkeydown = (e) => {
     keys[e.code] = true;
-    if((e.code === 'ArrowUp' || e.code === 'Space') && player.grounded) player.velY = player.jumpForce;
+    if((e.code === 'ArrowUp' || e.code === 'Space') && player.grounded) player.velY = player.jump;
 };
 window.onkeyup = (e) => keys[e.code] = false;
 
 function startGame() {
     document.getElementById('menu').style.display = 'none';
-    gameState = 'playing';
-    initLevel(1);
-    draw();
+    if(gameState === 'menu') {
+        gameState = 'playing';
+        initLevel(currentLevel);
+        draw();
+    }
 }
+updateSkinButtons();
 </script>
 </body>
 </html>
