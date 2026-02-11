@@ -2,148 +2,162 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>V14 AARON ADVENTURES: OMNIVERSE ZERO</title>
+    <title>AARON ADVENTURES: INFINITE VANGUARD</title>
     <style>
         @import url('https://fonts.googleapis.com');
-        body, html { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: 'Orbitron', sans-serif; }
-        canvas { display: block; filter: contrast(1.2) saturate(1.4); }
+        :root { --p: #00ff88; --s: #ff0044; --bg: #020205; }
+        body, html { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: 'Orbitron', sans-serif; color: #fff; }
+        canvas { display: block; filter: contrast(1.1) brightness(1.1); }
         
-        #ui { position: absolute; inset: 0; pointer-events: none; z-index: 100; }
-        .hud { position: absolute; top: 40px; left: 40px; background: rgba(0,0,0,0.8); border: 2px solid #00ff88; padding: 20px; backdrop-filter: blur(10px); border-radius: 0 20px 20px 0; }
-        .lvl-txt { font-size: 45px; font-weight: 900; color: #fff; letter-spacing: 5px; text-shadow: 0 0 20px #00ff88; }
-        
-        #menu { position: absolute; inset: 0; background: radial-gradient(circle, #0a0a1a 0%, #000 100%); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .title { font-size: 100px; letter-spacing: 25px; color: #fff; text-shadow: 0 0 50px #00ff88; margin: 0; }
-        
-        .vault { display: flex; gap: 20px; margin: 40px 0; }
-        .slot { width: 100px; height: 120px; background: #111; border: 2px solid #333; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 15px; }
-        .slot.unlocked:hover { border-color: #00ff88; transform: scale(1.1); box-shadow: 0 0 30px #00ff88; }
-        .slot.selected { border-color: #00ff88; background: rgba(0,255,136,0.1); }
-        .slot.locked { opacity: 0.15; cursor: not-allowed; }
+        #ui { position: absolute; inset: 0; pointer-events: none; z-index: 100; padding: 40px; }
+        .hud { background: rgba(0,0,0,0.85); border-left: 5px solid var(--p); padding: 20px; backdrop-filter: blur(15px); border-radius: 0 15px 15px 0; display: inline-block; }
+        .lvl-val { font-size: 42px; font-weight: 900; color: #fff; text-shadow: 0 0 20px var(--p); }
 
-        .btn { background: transparent; color: #fff; border: 2px solid #fff; padding: 25px 80px; font-size: 28px; font-weight: 900; cursor: pointer; letter-spacing: 10px; transition: 0.4s; }
-        .btn:hover { background: #fff; color: #000; box-shadow: 0 0 80px #fff; }
+        #menu { position: absolute; inset: 0; background: radial-gradient(circle, #0a0a1a 0%, #000 100%); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .title { font-size: 80px; letter-spacing: 20px; font-weight: 900; color: #fff; text-shadow: 0 0 50px var(--p); margin: 0; }
+        
+        .vault { display: flex; gap: 20px; margin: 40px 0; perspective: 1000px; }
+        .slot { width: 110px; height: 130px; background: rgba(255,255,255,0.03); border: 2px solid #333; border-radius: 15px; cursor: pointer; transition: 0.4s; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .slot.unlocked:hover { border-color: var(--p); transform: translateY(-10px) rotateY(10deg); box-shadow: 0 0 40px var(--p); }
+        .slot.selected { border-color: var(--p); background: rgba(0,255,136,0.1); }
+        .slot.locked { opacity: 0.1; cursor: not-allowed; }
+
+        .btn { background: transparent; color: #fff; border: 2px solid #fff; padding: 20px 70px; font-size: 26px; font-weight: 900; cursor: pointer; letter-spacing: 8px; transition: 0.4s; border-radius: 5px; }
+        .btn:hover { background: #fff; color: #000; box-shadow: 0 0 60px #fff; }
     </style>
 </head>
 <body>
 
 <div id="ui">
     <div class="hud">
-        <div style="color:#00ff88; font-size:12px; letter-spacing:4px">VANGUARD_OS_v5.0</div>
-        <div class="lvl-txt">SEC_<span id="lvl">01</span></div>
-        <div id="biome" style="color:#555; font-size:14px; margin-top:5px">INITIALIZING...</div>
+        <div style="color:var(--p); font-size:10px; letter-spacing:3px">VANGUARD_STORAGE_LINKED</div>
+        <div class="lvl-val">SEC_<span id="lvlDisplay">01</span></div>
+        <div id="biomeInfo" style="color:#666; font-size:14px; margin-top:5px">SCANNING...</div>
     </div>
 </div>
 
 <div id="menu">
     <h1 class="title">AARON</h1>
-    <div style="color:#ff0044; letter-spacing:15px; font-weight:bold; margin-top:-20px">SINGULARITY</div>
+    <div style="color:var(--s); letter-spacing:10px; font-weight:bold; margin-top:-15px">VANGUARD SINGULARITY</div>
     <div class="vault" id="vault"></div>
-    <button class="btn" onclick="launch()">ENGAGE</button>
+    <button class="btn" onclick="launchSystem()">ENGAGE_UPLINK</button>
 </div>
 
 <canvas id="stage"></canvas>
 
 <script>
 /**
- * AARON ADVENTURES: OMNIVERSE ZERO - 2000 LINE ARCHITECTURE
- * ECS & FIXED DELTA TIME PHYSICS ENGINE
+ * AARON ADVENTURES: INFINITE VANGUARD
+ * Features: Persistenz (Local Storage), Texture-Engine, Skill-Gap Platforms
  */
 
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
-let w, h, camX = 0, currentLvl = 1, skinIdx = 0, lastTime = 0;
+let w, h, camX = 0, currentLevel = 1, skinIdx = 0, lastTime = 0;
 let gameState = 'MENU', loopId = null;
 
-// BIOME & SKIN DATA
-const BIOMES = [
-    { name: "NEON ABYSS", bg: "#020205", p: "#00ff88", s: "#004422" },
-    { name: "CARBON CORE", bg: "#050a05", p: "#ccff00", s: "#445500" },
-    { name: "FROST SECTOR", bg: "#050a15", p: "#00d2d3", s: "#005577" },
-    { name: "MAGMA FORGE", bg: "#100505", p: "#ff4400", s: "#551100" }
-];
+// Speicher-Logik
+function saveProgress() {
+    localStorage.setItem('aaron_vanguard_level', currentLevel);
+}
+function loadProgress() {
+    const saved = localStorage.getItem('aaron_vanguard_level');
+    if(saved) currentLevel = parseInt(saved);
+}
 
 const SKINS = [
     { name: "Vanguard", c1: "#1e272e", c2: "#485460", eye: "#ff3f34", glow: "#ff3f34" },
-    { name: "Ghost", c1: "#000", c2: "#111", eye: "#00ff88", glow: "#00ff88" },
-    { name: "Cryo", c1: "#d2dae2", c2: "#f5f6fa", eye: "#00a8ff", glow: "#00a8ff" },
-    { name: "Rebel", c1: "#c23616", c2: "#191919", eye: "#fbc531", glow: "#fbc531" },
-    { name: "Elite", c1: "#130f40", c2: "#30336b", eye: "#be2edd", glow: "#be2edd" }
+    { name: "Neon", c1: "#000", c2: "#111", eye: "#00ff88", glow: "#00ff88" },
+    { name: "Cryo", c1: "#f5f6fa", c2: "#d2dae2", eye: "#00a8ff", glow: "#00a8ff" },
+    { name: "Magma", c1: "#c23616", c2: "#191919", eye: "#fbc531", glow: "#fbc531" },
+    { name: "Void", c1: "#2c3e50", c2: "#191919", eye: "#9c88ff", glow: "#9c88ff" }
 ];
 
-// PHYSICS CONFIG (FIXED JUMP)
-const PHYSICS = {
-    g: 0.9, f: 0.82, j: -19.5, maxFall: 24, coyote: 12, buffer: 10
-};
+const BIOMES = [
+    { name: "NEON_ABYSS", bg: "#020205", p: "#00ff88", deco: "grid" },
+    { name: "CYBER_FOREST", bg: "#050a05", p: "#ccff00", deco: "vines" },
+    { name: "FROST_SECTOR", bg: "#050a15", p: "#00d2d3", deco: "snow" },
+    { name: "LAVA_CORE", bg: "#100505", p: "#ff4400", deco: "embers" }
+];
 
 const player = {
-    x: 150, y: 300, w: 52, h: 52, vx: 0, vy: 0,
-    grounded: false, coyote: 0, jumpBuff: 0, rot: 0,
-    dead: false, win: false
+    x: 100, y: 300, w: 52, h: 52, vx: 0, vy: 0,
+    speed: 7.5, jump: -20, g: 0.88, grounded: false,
+    coyote: 0, buffer: 0, dead: false, win: false
 };
 
 const keys = {};
-let entities = { platforms: [], hazards: [], particles: [], stars: [] };
+let world = { platforms: [], hazards: [], fx: [], backdrops: [] };
 
 function setup() {
     w = canvas.width = window.innerWidth;
     h = canvas.height = window.innerHeight;
+    loadProgress();
     renderVault();
 }
 
 function build(lvl) {
-    entities = { platforms: [], hazards: [], particles: [], stars: [] };
+    world = { platforms: [], hazards: [], fx: [], backdrops: [] };
     camX = 0; player.vx = 0; player.vy = 0; player.x = 150; player.y = 300;
     player.dead = false; player.win = false;
 
     const b = BIOMES[Math.floor((lvl-1)/10) % BIOMES.length];
-    document.getElementById('lvl').innerText = lvl.toString().padStart(2, '0');
-    document.getElementById('biome').innerText = "LOCATION: " + b.name;
+    document.getElementById('lvlDisplay').innerText = lvl.toString().padStart(2, '0');
+    document.getElementById('biomeInfo').innerText = "LOCATION: " + b.name;
 
     let lx = 0, ly = 550;
-    // Start Zone
-    entities.platforms.push(new Platform(0, 550, 600, 500, 'NORM', b.p));
+    // Startplattform
+    world.platforms.push(new Block(0, 550, 600, 500, 'NORM', b.p));
 
-    const count = 25 + lvl;
+    const count = 20 + lvl;
     for(let i=0; i < count; i++) {
-        let pw = 200 + Math.random() * 250;
-        let px = lx + 170 + Math.random() * 120;
-        let py = ly + (Math.random() * 240 - 120);
+        // WEITERE DISTANZEN: px ist nun lx + 180-320px für echte Sprung-Challenges
+        let pw = 150 + Math.random() * 200;
+        let px = lx + 200 + Math.random() * 150; 
+        let py = ly + (Math.random() * 260 - 130);
         py = Math.max(250, Math.min(h - 220, py));
 
         let type = 'NORM';
-        if(lvl > 5 && Math.random() > 0.8) type = 'MOVE';
+        if(lvl > 5 && Math.random() > 0.85) type = 'MOVE';
         if(lvl > 10 && Math.random() > 0.8) type = 'ICE';
-        if(lvl > 15 && Math.random() > 0.7) type = 'FRAGILE';
-        if(lvl > 20 && Math.random() > 0.7) type = 'BOOST';
+        if(lvl > 15 && Math.random() > 0.7) type = 'BOOST';
 
-        entities.platforms.push(new Platform(px, py, pw, 50, type, (i%2?b.p:b.s)));
+        world.platforms.push(new Block(px, py, pw, 55, type, b.p));
 
-        if(i > 3 && Math.random() < Math.min(0.8, 0.1 + lvl*0.03)) {
-            let hType = (lvl < 8) ? 'SPIKE' : (Math.random() > 0.5 ? 'DRONE' : 'CANNON');
-            entities.hazards.push(new Hazard(px + 50 + Math.random()*(pw-100), py - 45, hType));
+        if(i > 3 && Math.random() < 0.5) {
+            let hType = (lvl < 8) ? 'SPIKE' : (Math.random() > 0.5 ? 'DRONE' : 'LASER');
+            world.hazards.push(new Hazard(px + 40 + Math.random()*(pw-80), py - 45, hType));
         }
         lx = px; ly = py;
     }
-    // Goal
-    entities.platforms.push(new Platform(lx + 450, ly - 100, 150, 1000, 'GOAL', '#00ff88'));
+    world.platforms.push(new Block(lx + 450, ly - 50, 150, 1000, 'GOAL', '#00ff88'));
     
-    for(let i=0; i<150; i++) entities.stars.push({ x: Math.random()*w*10, y: Math.random()*h, s: Math.random()*3, z: Math.random()*0.6 });
+    // Hintergrund-Dekor passend zum Biom
+    for(let i=0; i<100; i++) world.backdrops.push({ x: Math.random()*w*10, y: Math.random()*h, s: Math.random()*3, z: Math.random()*0.5 });
 }
 
-// CLASSES
-class Platform {
-    constructor(x, y, w, h, type, c) { Object.assign(this, {x, y, w, h, type, c, oy: y, off: Math.random()*10, health: 1.0}); }
+class Block {
+    constructor(x, y, w, h, type, c) { Object.assign(this, {x, y, w, h, type, c, oy: y, off: Math.random()*10}); }
     draw(ctx, camX) {
-        if(this.health <= 0) return;
         let sx = this.x - camX;
         ctx.save();
-        ctx.globalAlpha = this.health;
-        ctx.fillStyle = this.type === 'GOAL' ? '#00ff88' : this.c;
-        if(this.type === 'GOAL') ctx.shadowBlur = 40, ctx.shadowColor = '#00ff88';
+        // TEXTUR-VERBESSERUNG: Gradienten + Pattern
+        const grad = ctx.createLinearGradient(sx, this.y, sx, this.y + this.h);
+        if(this.type === 'GOAL') {
+            ctx.shadowBlur = 40; ctx.shadowColor = '#00ff88'; ctx.fillStyle = '#00ff88';
+        } else {
+            grad.addColorStop(0, this.c);
+            grad.addColorStop(1, '#000');
+            ctx.fillStyle = grad;
+        }
+        ctx.beginPath(); ctx.roundRect(sx, this.y, this.w, this.h, 10); ctx.fill();
         
-        ctx.beginPath(); ctx.roundRect(sx, this.y, this.w, this.h, 12); ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.strokeRect(sx+8, this.y+8, this.w-16, 10);
+        // Technisches Gitter-Muster auf Blöcken
+        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.lineWidth = 1;
+        for(let i=10; i<this.w; i+=20) {
+            ctx.beginPath(); ctx.moveTo(sx+i, this.y); ctx.lineTo(sx+i, this.y+this.h); ctx.stroke();
+        }
         ctx.restore();
     }
 }
@@ -153,177 +167,130 @@ class Hazard {
     draw(ctx, camX) {
         let sx = this.x - camX;
         ctx.save();
-        ctx.shadowBlur = 20; ctx.shadowColor = '#ff3f34';
         if(this.type === 'SPIKE') {
-            ctx.fillStyle = '#ff3f34'; ctx.beginPath(); ctx.moveTo(sx, this.y+45); ctx.lineTo(sx+25, this.y); ctx.lineTo(sx+50, this.y+45); ctx.fill();
+            ctx.fillStyle = '#ff3f34'; ctx.shadowBlur = 15; ctx.shadowColor = 'red';
+            ctx.beginPath(); ctx.moveTo(sx, this.y+45); ctx.lineTo(sx+22, this.y); ctx.lineTo(sx+45, this.y+45); ctx.fill();
         } else if(this.type === 'DRONE') {
             this.x += Math.sin(Date.now()/500) * 4;
-            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(sx+25, this.y+25, 20, 0, 7); ctx.fill();
-            ctx.fillStyle = '#000'; ctx.fillRect(sx+10, this.y+20, 30, 5);
-        } else if(this.type === 'CANNON') {
-            ctx.fillStyle = '#333'; ctx.fillRect(sx, this.y, 45, 45);
-            if(Date.now() % 1500 < 20) spawnProj(this.x, this.y+20);
+            ctx.fillStyle = '#fff'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ff88';
+            ctx.beginPath(); ctx.arc(sx+22, this.y+22, 18, 0, 7); ctx.fill();
+        } else if(this.type === 'LASER') {
+            if(Math.floor(Date.now()/600)%2 === 0) {
+                ctx.fillStyle = 'rgba(255,0,0,0.8)'; ctx.shadowBlur = 30; ctx.shadowColor = 'red';
+                ctx.fillRect(sx+20, this.y-500, 6, 500);
+            }
+            ctx.fillStyle = '#333'; ctx.fillRect(sx, this.y, 45, 12);
         }
         ctx.restore();
     }
 }
 
-// MAIN LOOP (FIXED SPEED BUG)
-function loop(timestamp) {
-    const dt = timestamp - lastTime;
-    lastTime = timestamp;
-
-    if(gameState === 'PLAY') {
-        update(dt);
-        render();
-    }
-    loopId = requestAnimationFrame(loop);
-}
-
 function update(dt) {
-    if(player.dead) return build(currentLvl);
+    if(player.dead) return build(currentLevel);
     if(player.win) {
-        gameState = 'MENU';
-        currentLvl++;
+        cancelAnimationFrame(loopId); currentLevel++;
+        saveProgress(); // Fortschritt im LocalStorage sichern
         document.getElementById('menu').style.display = 'flex';
-        renderVault();
-        return;
+        document.getElementById('menu').style.opacity = '1';
+        renderVault(); return;
     }
 
-    // Horizontal Input
-    if(keys['ArrowLeft']) player.vx -= 1.4;
-    if(keys['ArrowRight']) player.vx += 1.4;
-    player.vx *= PHYSICS.f;
+    if(keys['ArrowLeft']) player.vx -= 1.2;
+    if(keys['ArrowRight']) player.vx += 1.2;
+    player.vx *= 0.85;
     player.x += player.vx;
 
-    // Fixed Vertical Jump Engine
-    player.vy += PHYSICS.g;
-    if(player.vy > PHYSICS.maxFall) player.vy = PHYSICS.maxFall;
+    player.vy += player.g;
+    if(player.vy > 25) player.vy = 25;
     player.y += player.vy;
 
-    if(player.grounded) player.coyote = PHYSICS.coyote; else player.coyote--;
-    if(player.jumpBuff > 0) player.jumpBuff--;
+    if(player.grounded) player.coyote = 10; else player.coyote--;
+    if(player.buffer > 0) player.buffer--;
 
-    if(player.jumpBuff > 0 && player.coyote > 0) {
-        player.vy = PHYSICS.j;
-        player.jumpBuff = 0; player.coyote = 0; player.grounded = false;
+    if(player.buffer > 0 && player.coyote > 0) {
+        player.vy = player.jump;
+        player.buffer = 0; player.coyote = 0; player.grounded = false;
     }
 
-    // Collision
     player.grounded = false;
-    entities.platforms.forEach(p => {
-        if(p.health <= 0) return;
+    world.platforms.forEach(p => {
         if(p.type === 'MOVE') p.y = p.oy + Math.sin(Date.now()/600 + p.off) * 80;
-        
         if(player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h > p.y && player.y + player.h < p.y + p.h + 25 && player.vy >= 0) {
             if(p.type === 'GOAL') player.win = true;
             player.y = p.y - player.h;
-            player.vy = (p.type === 'BOOST') ? -30 : 0;
+            player.vy = (p.type === 'BOOST') ? -32 : 0;
             player.grounded = true;
-            if(p.type === 'FRAGILE') {
-                p.health -= 0.05;
-                if(p.health <= 0) explode(p);
-            }
         }
     });
 
     camX += (player.x - camX - w/3.5) * 0.1;
-    entities.hazards.forEach(h => {
-        if(Math.hypot(player.x+26-(h.x+25), player.y+26-(h.y+22)) < 42) player.dead = true;
+    world.hazards.forEach(h => {
+        if(Math.hypot(player.x+26-(h.x+22), player.y+26-(h.y+22)) < 40) player.dead = true;
     });
 
-    // Update Particles
-    entities.particles.forEach((p, i) => {
-        p.x += p.vx; p.y += p.vy; p.o -= 0.02;
-        if(p.o <= 0) entities.particles.splice(i, 1);
-    });
-
-    if(player.y > h + 400) player.dead = true;
+    if(player.y > h + 500) player.dead = true;
 }
 
-function render() {
-    const b = BIOMES[Math.floor((currentLvl-1)/10) % BIOMES.length];
+function draw() {
+    const b = BIOMES[Math.floor((currentLevel-1)/10) % BIOMES.length];
     ctx.fillStyle = b.bg;
     ctx.fillRect(0, 0, w, h);
 
-    // Parallax
-    ctx.fillStyle = "rgba(255,255,255,0.1)";
-    entities.stars.forEach(s => ctx.fillRect((s.x - camX * s.z) % (w+400), s.y, s.s, s.s));
-
-    entities.platforms.forEach(p => p.draw(ctx, camX));
-    entities.hazards.forEach(h => h.draw(ctx, camX));
-    
-    // Draw Particles
-    entities.particles.forEach(p => {
-        ctx.fillStyle = p.c; ctx.globalAlpha = p.o;
-        ctx.fillRect(p.x - camX, p.y, p.s, p.s);
+    // Parallax Hintergrund basierend auf Biom
+    ctx.fillStyle = b.name === "LAVA_CORE" ? "rgba(255,68,0,0.1)" : "rgba(255,255,255,0.1)";
+    world.backdrops.forEach(s => {
+        let sx = (s.x - camX * s.z) % (w + 400);
+        if(b.deco === "snow") {
+            ctx.beginPath(); ctx.arc(sx, (s.y + Date.now()/10)%h, s.s, 0, 7); ctx.fill();
+        } else {
+            ctx.fillRect(sx, s.y, s.s, s.s);
+        }
     });
-    ctx.globalAlpha = 1;
 
-    // HIGH QUALITY AARON (SKELETAL)
+    world.platforms.forEach(p => p.draw(ctx, camX));
+    world.hazards.forEach(h => h.draw(ctx, camX));
+
+    // AARON RENDERING
     const s = SKINS[skinIdx];
     ctx.save();
     ctx.translate(player.x - camX + 26, player.y + 26);
     ctx.rotate(player.vx * 0.04);
-    
-    // Shadow Aura
-    ctx.shadowBlur = 35; ctx.shadowColor = s.glow;
+    ctx.shadowBlur = 30; ctx.shadowColor = s.glow;
     ctx.fillStyle = s.c1;
-    ctx.beginPath(); ctx.roundRect(-26, -26, 52, 52, 16); ctx.fill();
-    
-    // Visor
-    ctx.shadowBlur = 0; ctx.fillStyle = "#000";
-    ctx.beginPath(); ctx.roundRect(-26, -14, 52, 22, 6); ctx.fill();
-    
-    // Eyes
-    ctx.fillStyle = s.eye; ctx.shadowBlur = 15; ctx.shadowColor = s.eye;
-    ctx.fillRect(-18, -10, 14, 6); ctx.fillRect(4, -10, 14, 6);
-    
-    // Vanguard Mark
-    ctx.strokeStyle = "rgba(255,0,0,0.6)"; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(12, -30); ctx.lineTo(20, -5); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(-26, -26, 52, 52, 14); ctx.fill();
+    ctx.fillStyle = s.eye; ctx.shadowBlur = 10; ctx.shadowColor = s.eye;
+    ctx.fillRect(-18, -10, 12, 5); ctx.fillRect(6, -10, 12, 5);
     ctx.restore();
-}
 
-// FX
-function explode(p) {
-    for(let i=0; i<12; i++) {
-        entities.particles.push({
-            x: p.x + Math.random()*p.w, y: p.y,
-            vx: (Math.random()-0.5)*10, vy: -Math.random()*10,
-            s: 8+Math.random()*10, o: 1, c: p.c
-        });
-    }
-}
-
-function spawnProj(x, y) {
-    entities.hazards.push({ x, y, type: 'PROJ', vx: -12, draw: (ctx, camX) => {
-        ctx.fillStyle = 'yellow'; ctx.beginPath(); ctx.arc(x-camX, y, 10, 0, 7); ctx.fill();
-    }});
+    update();
+    loopId = requestAnimationFrame(draw);
 }
 
 function renderVault() {
     const v = document.getElementById('vault'); v.innerHTML = '';
-    const unlocked = Math.floor((currentLvl-1)/5) + 1;
+    const unlocked = Math.floor((currentLevel-1)/5) + 1;
     SKINS.forEach((s, i) => {
         const slot = document.createElement('div');
         slot.className = `slot ${i < unlocked ? 'unlocked' : 'locked'} ${i === skinIdx ? 'selected' : ''}`;
-        slot.innerHTML = `<div style="width:40px;height:40px;background:${s.c1};border:2px solid ${s.eye}"></div><div style="font-size:9px;color:#888;margin-top:5px">${s.name}</div>`;
+        slot.innerHTML = `<div style="width:40px;height:40px;background:${s.c1};border:2px solid ${s.eye}"></div><div style="font-size:10px;margin-top:5px">${s.name}</div>`;
         if(i < unlocked) slot.onclick = () => { skinIdx = i; renderVault(); };
         v.appendChild(slot);
     });
 }
 
-function launch() {
-    document.getElementById('menu').style.display = 'none';
-    gameState = 'PLAY';
-    build(currentLvl);
-    if(!loopId) loop(performance.now());
+function launchSystem() {
+    document.getElementById('menu').style.opacity = '0';
+    setTimeout(() => {
+        document.getElementById('menu').style.display = 'none';
+        build(currentLevel);
+        cancelAnimationFrame(loopId);
+        draw();
+    }, 600);
 }
 
 window.addEventListener('keydown', e => {
     keys[e.code] = true;
-    if(e.code === 'ArrowUp' || e.code === 'Space') player.jumpBuff = PHYSICS.buffer;
+    if(e.code === 'ArrowUp' || e.code === 'Space') player.buffer = 10;
 });
 window.addEventListener('keyup', e => keys[e.code] = false);
 window.addEventListener('resize', setup);
