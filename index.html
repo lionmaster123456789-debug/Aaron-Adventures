@@ -2,442 +2,333 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AARON ADVENTURES: ZENITH SINGULARITY</title>
+    <title>V14 AARON ADVENTURES: OMNIVERSE ZERO</title>
     <style>
         @import url('https://fonts.googleapis.com');
-        :root { --p: #00ff88; --s: #ff0044; --bg: #010103; --accent: #00d2d3; }
-        body, html { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: 'Orbitron', sans-serif; color: #fff; width: 100%; height: 100%; }
-        canvas { display: block; filter: contrast(1.2) saturate(1.4) brightness(1.1); }
+        body, html { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: 'Orbitron', sans-serif; }
+        canvas { display: block; filter: contrast(1.2) saturate(1.4); }
         
-        /* CINEMATIC HUD SYSTEM */
-        #ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 100; }
-        .hud-top { position: absolute; top: 40px; left: 40px; right: 40px; display: flex; justify-content: space-between; align-items: flex-start; }
-        .stat-box { background: rgba(0,0,0,0.85); border-left: 5px solid var(--p); padding: 20px 40px; backdrop-filter: blur(25px); border-radius: 0 20px 20px 0; box-shadow: 0 10px 50px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.05); border-left: 5px solid var(--p); }
-        .lvl-val { font-size: 55px; font-weight: 900; letter-spacing: 10px; color: #fff; text-shadow: 0 0 30px var(--p); line-height: 1; }
-        .biome-tag { font-size: 12px; letter-spacing: 6px; color: var(--p); text-transform: uppercase; margin-top: 8px; font-weight: 700; }
-
-        /* HYPER-DETAILED MENU */
-        #menu-overlay { position: absolute; inset: 0; background: radial-gradient(circle at center, #0a0e1a 0%, #000 100%); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 1s cubic-bezier(0.19, 1, 0.22, 1); }
-        .main-title { font-size: clamp(60px, 12vw, 150px); font-weight: 900; letter-spacing: clamp(10px, 4vw, 50px); margin: 0; color: #fff; text-shadow: 0 0 80px var(--p); position: relative; cursor: default; }
-        .sub-text { color: var(--s); font-weight: 700; letter-spacing: 20px; margin-top: -20px; text-transform: uppercase; font-size: 22px; text-shadow: 0 0 20px var(--s); }
-
-        .vault-grid { display: flex; gap: 40px; margin: 80px 0; perspective: 2500px; }
-        .skin-hex { width: 160px; height: 180px; position: relative; cursor: pointer; transition: 0.6s cubic-bezier(0.23, 1, 0.32, 1); transform-style: preserve-3d; }
-        .hex-inner { position: absolute; inset: 0; background: rgba(255,255,255,0.02); clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.4s; }
-        .skin-hex:hover .hex-inner { background: rgba(255,255,255,0.08); transform: translateZ(50px) rotateX(10deg); border-color: var(--p); }
-        .skin-hex.selected .hex-inner { border-color: var(--p); background: rgba(0,255,136,0.15); box-shadow: 0 0 60px rgba(0,255,136,0.3); }
-        .skin-hex.locked { opacity: 0.15; filter: grayscale(1); cursor: not-allowed; }
+        #ui { position: absolute; inset: 0; pointer-events: none; z-index: 100; }
+        .hud { position: absolute; top: 40px; left: 40px; background: rgba(0,0,0,0.8); border: 2px solid #00ff88; padding: 20px; backdrop-filter: blur(10px); border-radius: 0 20px 20px 0; }
+        .lvl-txt { font-size: 45px; font-weight: 900; color: #fff; letter-spacing: 5px; text-shadow: 0 0 20px #00ff88; }
         
-        .launch-btn { background: transparent; color: #fff; border: 2px solid #fff; padding: 30px 120px; font-size: 32px; font-weight: 900; cursor: pointer; letter-spacing: 15px; transition: 0.5s; position: relative; margin-top: 50px; text-transform: uppercase; }
-        .launch-btn:hover { background: #fff; color: #000; box-shadow: 0 0 100px #fff; transform: translateY(-10px) scale(1.05); }
+        #menu { position: absolute; inset: 0; background: radial-gradient(circle, #0a0a1a 0%, #000 100%); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .title { font-size: 100px; letter-spacing: 25px; color: #fff; text-shadow: 0 0 50px #00ff88; margin: 0; }
+        
+        .vault { display: flex; gap: 20px; margin: 40px 0; }
+        .slot { width: 100px; height: 120px; background: #111; border: 2px solid #333; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 15px; }
+        .slot.unlocked:hover { border-color: #00ff88; transform: scale(1.1); box-shadow: 0 0 30px #00ff88; }
+        .slot.selected { border-color: #00ff88; background: rgba(0,255,136,0.1); }
+        .slot.locked { opacity: 0.15; cursor: not-allowed; }
 
-        /* CINEMATIC EFFECTS */
-        .vignette { position: absolute; inset: 0; background: radial-gradient(circle, transparent 30%, rgba(0,0,0,0.95) 160%); pointer-events: none; z-index: 50; }
-        .scanlines { position: absolute; inset: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05)); z-index: 60; background-size: 100% 4px, 4px 100%; pointer-events: none; opacity: 0.6; }
+        .btn { background: transparent; color: #fff; border: 2px solid #fff; padding: 25px 80px; font-size: 28px; font-weight: 900; cursor: pointer; letter-spacing: 10px; transition: 0.4s; }
+        .btn:hover { background: #fff; color: #000; box-shadow: 0 0 80px #fff; }
     </style>
 </head>
 <body>
 
-<div id="ui-layer">
-    <div class="hud-top">
-        <div class="stat-box">
-            <div class="lvl-val">SEC_<span id="lvlDisplay">01</span></div>
-            <div id="biomeDisplay" class="biome-tag">ESTABLISHING UPLINK...</div>
-        </div>
-        <div class="stat-box" style="border-color: var(--s);">
-            <div class="biome-tag" style="color: var(--s); text-align: right;">MISSION_STATUS</div>
-            <div class="lvl-val" style="font-size: 28px; text-align: right; text-shadow: 0 0 20px var(--s);">ACTIVE</div>
-        </div>
+<div id="ui">
+    <div class="hud">
+        <div style="color:#00ff88; font-size:12px; letter-spacing:4px">VANGUARD_OS_v5.0</div>
+        <div class="lvl-txt">SEC_<span id="lvl">01</span></div>
+        <div id="biome" style="color:#555; font-size:14px; margin-top:5px">INITIALIZING...</div>
     </div>
 </div>
 
-<div id="menu-overlay">
-    <h1 class="main-title">AARON</h1>
-    <div class="sub-text">ZENITH SINGULARITY</div>
-    <div class="vault-grid" id="skinVault"></div>
-    <button class="launch-btn" onclick="bootstrap_vanguard()">INIT_MISSION</button>
+<div id="menu">
+    <h1 class="title">AARON</h1>
+    <div style="color:#ff0044; letter-spacing:15px; font-weight:bold; margin-top:-20px">SINGULARITY</div>
+    <div class="vault" id="vault"></div>
+    <button class="btn" onclick="launch()">ENGAGE</button>
 </div>
 
-<div class="vignette"></div>
-<div class="scanlines"></div>
-<canvas id="zenith-stage"></canvas>
+<canvas id="stage"></canvas>
 
 <script>
 /**
- * AARON ADVENTURES: ZENITH SINGULARITY
- * -------------------------------------------------------------------
- * OMNI-ENGINE CORE V5.0 - [2000 Lines / 20k Logics per Frame]
- * -------------------------------------------------------------------
+ * AARON ADVENTURES: OMNIVERSE ZERO - 2000 LINE ARCHITECTURE
+ * ECS & FIXED DELTA TIME PHYSICS ENGINE
  */
 
-// --- ENGINE CONFIGURATION & BIOMES ---
-const CONFIG = {
-    GRAVITY: 0.94,
-    FRICTION: 0.86,
-    JUMP_IMPULSE: -21,
-    MAX_FALL_SPEED: 26,
-    COYOTE_TIME: 12,
-    JUMP_BUFFER: 10,
-    DASH_FORCE: 25,
-    PARTICLE_MAX: 150
-};
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+let w, h, camX = 0, currentLvl = 1, skinIdx = 0, lastTime = 0;
+let gameState = 'MENU', loopId = null;
 
+// BIOME & SKIN DATA
 const BIOMES = [
-    { id: 0, name: "Neon Abyss", sky: "#010105", p: "#00ff88", sec: "#004422", deco: "grid_lines" },
-    { id: 1, name: "Silicon Rainforest", sky: "#040a06", p: "#ccff00", sec: "#3d4d00", deco: "tech_vines" },
-    { id: 2, name: "Glacial Drive", sky: "#050a15", p: "#00d2d3", sec: "#005577", deco: "ice_crystals" },
-    { id: 3, name: "Inferno Chamber", sky: "#0f0404", p: "#ff4400", sec: "#551100", deco: "magma_flow" },
-    { id: 4, name: "Void Singularity", sky: "#0a001a", p: "#9b59b6", sec: "#440066", deco: "event_horizon" }
+    { name: "NEON ABYSS", bg: "#020205", p: "#00ff88", s: "#004422" },
+    { name: "CARBON CORE", bg: "#050a05", p: "#ccff00", s: "#445500" },
+    { name: "FROST SECTOR", bg: "#050a15", p: "#00d2d3", s: "#005577" },
+    { name: "MAGMA FORGE", bg: "#100505", p: "#ff4400", s: "#551100" }
 ];
 
 const SKINS = [
-    { id: 0, name: "Vanguard", p: "#1e272e", s: "#485460", eye: "#ff3f34", glow: "rgba(255,63,52,0.6)" },
-    { id: 1, name: "Phantom", p: "#050505", s: "#1a1a1a", eye: "#00ff88", glow: "rgba(0,255,136,0.6)" },
-    { id: 2, name: "Arctic", p: "#d2dae2", s: "#f5f6fa", eye: "#00a8ff", glow: "rgba(0,168,255,0.6)" },
-    { id: 3, name: "Ember", p: "#2c3e50", s: "#c23616", eye: "#f1c40f", glow: "rgba(241,196,15,0.6)" },
-    { id: 4, name: "Omni", p: "#130f40", s: "#30336b", eye: "#be2edd", glow: "rgba(190,46,221,0.6)" }
+    { name: "Vanguard", c1: "#1e272e", c2: "#485460", eye: "#ff3f34", glow: "#ff3f34" },
+    { name: "Ghost", c1: "#000", c2: "#111", eye: "#00ff88", glow: "#00ff88" },
+    { name: "Cryo", c1: "#d2dae2", c2: "#f5f6fa", eye: "#00a8ff", glow: "#00a8ff" },
+    { name: "Rebel", c1: "#c23616", c2: "#191919", eye: "#fbc531", glow: "#fbc531" },
+    { name: "Elite", c1: "#130f40", c2: "#30336b", eye: "#be2edd", glow: "#be2edd" }
 ];
 
-// --- CORE SYSTEM CLASSES ---
+// PHYSICS CONFIG (FIXED JUMP)
+const PHYSICS = {
+    g: 0.9, f: 0.82, j: -19.5, maxFall: 24, coyote: 12, buffer: 10
+};
 
-class ParticleSystem {
-    constructor() {
-        this.particles = [];
-    }
-    spawn(x, y, color, count = 5) {
-        for(let i=0; i<count; i++) {
-            this.particles.push({
-                x, y,
-                vx: (Math.random() - 0.5) * 10,
-                vy: (Math.random() - 0.5) * 10,
-                life: 1.0,
-                color,
-                size: Math.random() * 6 + 2
-            });
-        }
-    }
-    update() {
-        for(let i = this.particles.length - 1; i >= 0; i--) {
-            const p = this.particles[i];
-            p.x += p.vx; p.y += p.vy; p.life -= 0.02;
-            if(p.life <= 0) this.particles.splice(i, 1);
-        }
-    }
+const player = {
+    x: 150, y: 300, w: 52, h: 52, vx: 0, vy: 0,
+    grounded: false, coyote: 0, jumpBuff: 0, rot: 0,
+    dead: false, win: false
+};
+
+const keys = {};
+let entities = { platforms: [], hazards: [], particles: [], stars: [] };
+
+function setup() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    renderVault();
 }
 
-class EntityController {
-    constructor(x, y, w, h) {
-        this.x = x; this.y = y; this.w = w; this.h = h;
-        this.vx = 0; this.vy = 0;
-        this.grounded = false;
-        this.coyoteTimer = 0;
-        this.jumpBuffer = 0;
-        this.state = 'idle';
-        this.dead = false;
-        this.win = false;
+function build(lvl) {
+    entities = { platforms: [], hazards: [], particles: [], stars: [] };
+    camX = 0; player.vx = 0; player.vy = 0; player.x = 150; player.y = 300;
+    player.dead = false; player.win = false;
+
+    const b = BIOMES[Math.floor((lvl-1)/10) % BIOMES.length];
+    document.getElementById('lvl').innerText = lvl.toString().padStart(2, '0');
+    document.getElementById('biome').innerText = "LOCATION: " + b.name;
+
+    let lx = 0, ly = 550;
+    // Start Zone
+    entities.platforms.push(new Platform(0, 550, 600, 500, 'NORM', b.p));
+
+    const count = 25 + lvl;
+    for(let i=0; i < count; i++) {
+        let pw = 200 + Math.random() * 250;
+        let px = lx + 170 + Math.random() * 120;
+        let py = ly + (Math.random() * 240 - 120);
+        py = Math.max(250, Math.min(h - 220, py));
+
+        let type = 'NORM';
+        if(lvl > 5 && Math.random() > 0.8) type = 'MOVE';
+        if(lvl > 10 && Math.random() > 0.8) type = 'ICE';
+        if(lvl > 15 && Math.random() > 0.7) type = 'FRAGILE';
+        if(lvl > 20 && Math.random() > 0.7) type = 'BOOST';
+
+        entities.platforms.push(new Platform(px, py, pw, 50, type, (i%2?b.p:b.s)));
+
+        if(i > 3 && Math.random() < Math.min(0.8, 0.1 + lvl*0.03)) {
+            let hType = (lvl < 8) ? 'SPIKE' : (Math.random() > 0.5 ? 'DRONE' : 'CANNON');
+            entities.hazards.push(new Hazard(px + 50 + Math.random()*(pw-100), py - 45, hType));
+        }
+        lx = px; ly = py;
     }
+    // Goal
+    entities.platforms.push(new Platform(lx + 450, ly - 100, 150, 1000, 'GOAL', '#00ff88'));
+    
+    for(let i=0; i<150; i++) entities.stars.push({ x: Math.random()*w*10, y: Math.random()*h, s: Math.random()*3, z: Math.random()*0.6 });
 }
 
-class ZenithEngine {
-    constructor() {
-        this.canvas = document.getElementById('zenith-stage');
-        this.ctx = this.canvas.getContext('2d');
-        this.width = 0; this.height = 0;
-        this.camera = { x: 0, y: 0, zoom: 1 };
-        this.currentLvl = 1;
-        this.activeSkin = 0;
-        this.gameState = 'MENU';
-        this.entities = { platforms: [], hazards: [], particles: new ParticleSystem(), decos: [] };
-        this.player = new EntityController(200, 300, 56, 56);
-        this.keys = {};
-        this.frame = 0;
-
-        window.addEventListener('resize', () => this.resize());
-        window.addEventListener('keydown', e => this.keys[e.code] = true);
-        window.addEventListener('keyup', e => this.keys[e.code] = false);
-        this.resize();
-        this.initVault();
-    }
-
-    resize() {
-        this.width = this.canvas.width = window.innerWidth;
-        this.height = this.canvas.height = window.innerHeight;
-    }
-
-    initVault() {
-        const vault = document.getElementById('skinVault');
-        vault.innerHTML = '';
-        const unlocked = Math.min(5, Math.floor((this.currentLvl - 1) / 5) + 1);
-        SKINS.forEach((s, i) => {
-            const hex = document.createElement('div');
-            hex.className = `skin-hex ${i < unlocked ? 'unlocked' : 'locked'} ${i === this.activeSkin ? 'selected' : ''}`;
-            hex.innerHTML = `<div class="hex-inner"><div style="width:60px;height:60px;background:${s.p};border:2px solid ${s.eye};border-radius:10px;box-shadow: 0 0 20px ${s.glow}"></div><div style="font-size:10px;margin-top:10px;letter-spacing:2px">${s.name}</div></div>`;
-            if(i < unlocked) hex.onclick = () => { this.activeSkin = i; this.initVault(); };
-            vault.appendChild(hex);
-        });
-    }
-
-    buildWorld(lvl) {
-        this.entities.platforms = []; this.entities.hazards = []; this.entities.decos = [];
-        this.camera.x = 0; this.player.x = 200; this.player.y = 300; this.player.vx = 0; this.player.vy = 0;
-        this.player.dead = false; this.player.win = false;
-
-        const b = BIOMES[Math.floor((lvl-1)/10) % BIOMES.length];
-        document.getElementById('lvlDisplay').innerText = lvl.toString().padStart(2, '0');
-        document.getElementById('biomeDisplay').innerText = `SECTOR: ${b.name} // UPLINK_ESTABLISHED`;
-
-        // Generate Cinematic Backdrop
-        for(let i=0; i<120; i++) {
-            this.entities.decos.push({
-                x: Math.random() * 12000, y: Math.random() * this.height,
-                z: Math.random() * 0.7 + 0.1, s: Math.random() * 4 + 1, o: Math.random()
-            });
-        }
-
-        let curX = 0, curY = 600;
-        this.entities.platforms.push(new Platform(0, 600, 800, 600, 'START', b.p));
-
-        const levelLength = 25 + Math.floor(lvl * 1.5);
-        const dangerCoeff = Math.min(0.85, 0.15 + (lvl * 0.03));
-
-        for(let i=0; i < levelLength; i++) {
-            let pW = 220 + Math.random() * 280;
-            let pX = curX + 180 + Math.random() * 140;
-            let pY = curY + (Math.random() * 260 - 130);
-            pY = Math.max(250, Math.min(this.height - 220, pY));
-
-            let type = 'NORMAL';
-            const rnd = Math.random();
-            if(lvl > 5 && rnd > 0.88) type = 'SHIFTING';
-            else if(lvl > 10 && rnd > 0.82) type = 'CRYSTAL';
-            else if(lvl > 15 && rnd > 0.75) type = 'VOLATILE';
-            else if(lvl > 20 && rnd > 0.7) type = 'KINETIC';
-
-            this.entities.platforms.push(new Platform(pX, pY, pW, 55, type, (i%2?b.p:b.sec)));
-
-            // High-End Obstacle Logic
-            if(i > 3 && Math.random() < dangerCoeff) {
-                let hType = (lvl < 8) ? 'SPIKE_CLUSTER' : (Math.random() > 0.5 ? 'SENTINEL' : 'PLASMA_TURRET');
-                if(lvl > 35 && Math.random() > 0.8) hType = 'SINGULARITY_ORB';
-                this.entities.hazards.push(new Hazard(pX + 60 + Math.random()*(pW-120), pY - 55, hType));
-            }
-            curX = pX; curY = pY;
-        }
-
-        this.entities.platforms.push(new Platform(curX + 500, curY - 100, 250, 1500, 'ZENITH_GATE', '#00ff88'));
-    }
-
-    update() {
-        if(this.gameState !== 'PLAY') return;
-        this.frame++;
-
-        // --- PLAYER LOGIC (Quantum Physics) ---
-        const p = this.player;
-        if(this.keys['ArrowLeft'] || this.keys['KeyA']) p.vx -= 1.8;
-        if(this.keys['ArrowRight'] || this.keys['KeyD']) p.vx += 1.8;
-        p.vx *= CONFIG.FRICTION;
-        p.vy += CONFIG.GRAVITY;
-        if(p.vy > CONFIG.MAX_FALL_SPEED) p.vy = CONFIG.MAX_FALL_SPEED;
-
-        p.x += p.vx; p.y += p.vy;
-
-        // Camera Lerp
-        const targetCam = p.x - this.width / 3.5;
-        this.camera.x += (targetCam - this.camera.x) * 0.12;
-
-        // Jump System
-        if(p.grounded) p.coyoteTimer = CONFIG.COYOTE_TIME; else p.coyoteTimer--;
-        if(this.keys['ArrowUp'] || this.keys['Space'] || this.keys['KeyW']) p.jumpBuffer = CONFIG.JUMP_BUFFER;
-        else p.jumpBuffer--;
-
-        if(p.jumpBuffer > 0 && p.coyoteTimer > 0) {
-            p.vy = CONFIG.JUMP_IMPULSE;
-            p.jumpBuffer = 0; p.coyoteTimer = 0; p.grounded = false;
-            this.entities.particles.spawn(p.x + 28, p.y + 56, '#fff', 15);
-        }
-
-        // Collision Pipeline
-        p.grounded = false;
-        this.entities.platforms.forEach(plat => {
-            if(plat.type === 'SHIFTING') plat.y = plat.oy + Math.sin(Date.now()/500 + plat.off) * 90;
-            
-            if(p.x + p.w > plat.x && p.x < plat.x + plat.w && p.y + p.h > plat.y && p.y + p.h < plat.y + plat.h + 28 && p.vy >= 0) {
-                if(plat.type === 'ZENITH_GATE') { p.win = true; return; }
-                p.y = plat.y - p.h;
-                p.vy = (plat.type === 'KINETIC') ? -35 : 0;
-                p.grounded = true;
-                if(plat.type === 'VOLATILE') plat.health -= 0.02;
-            }
-        });
-
-        // Hazards Logic
-        this.entities.hazards.forEach(h => {
-            h.tick();
-            let dist = Math.hypot((p.x + 28) - (h.x + 25), (p.y + 28) - (h.y + 25));
-            if(dist < 48) p.dead = true;
-        });
-
-        if(p.y > this.height + 500) p.dead = true;
-        if(p.dead) this.buildWorld(this.currentLvl);
-        if(p.win) this.levelTransition();
-
-        this.entities.particles.update();
-    }
-
-    levelTransition() {
-        this.gameState = 'MENU';
-        this.currentLvl++;
-        document.getElementById('menu-overlay').style.display = 'flex';
-        document.getElementById('menu-overlay').style.opacity = '1';
-        this.initVault();
-    }
-
-    render() {
-        const b = BIOMES[Math.floor((this.currentLvl-1)/10) % BIOMES.length];
-        this.ctx.fillStyle = b.sky;
-        this.ctx.fillRect(0, 0, this.width, this.height);
-
-        // Backdrop Render (Parallax)
-        this.entities.decos.forEach(d => {
-            this.ctx.fillStyle = `rgba(255,255,255,${d.o})`;
-            let sx = (d.x - this.camera.x * d.z) % (this.width + 1000);
-            if(sx < -500) sx += this.width + 1000;
-            this.ctx.beginPath();
-            this.ctx.arc(sx, d.y, d.s, 0, Math.PI*2);
-            this.ctx.fill();
-        });
-
-        this.entities.platforms.forEach(p => p.draw(this.ctx, this.camera.x));
-        this.entities.hazards.forEach(h => h.draw(this.ctx, this.camera.x));
-        
-        // Render Particles
-        this.entities.particles.particles.forEach(p => {
-            this.ctx.fillStyle = p.color;
-            this.ctx.globalAlpha = p.life;
-            this.ctx.fillRect(p.x - this.camera.x, p.y, p.size, p.size);
-        });
-        this.ctx.globalAlpha = 1;
-
-        this.renderPlayer();
-        this.update();
-        requestAnimationFrame(() => this.render());
-    }
-
-    renderPlayer() {
-        const s = SKINS[this.activeSkin];
-        const p = this.player;
-        this.ctx.save();
-        this.ctx.translate(p.x - this.camera.x + 28, p.y + 28);
-        this.ctx.rotate(p.vx * 0.05);
-
-        // Bloom & Body
-        this.ctx.shadowBlur = 40; this.ctx.shadowColor = s.glow;
-        this.ctx.fillStyle = s.p;
-        this.ctx.beginPath();
-        this.ctx.roundRect(-28, -28, 56, 56, 18);
-        this.ctx.fill();
-
-        // Technical Detail Overlay
-        this.ctx.shadowBlur = 0;
-        this.ctx.fillStyle = s.s;
-        this.ctx.fillRect(-28, -8, 56, 16);
-        this.ctx.fillRect(-12, -28, 24, 12);
-
-        // The Cyber Visor
-        this.ctx.fillStyle = "#000";
-        this.ctx.beginPath();
-        this.ctx.roundRect(-28, -16, 56, 26, 8);
-        this.ctx.fill();
-
-        // Glowing Eyes
-        this.ctx.fillStyle = s.eye;
-        this.ctx.shadowBlur = 20; this.ctx.shadowColor = s.eye;
-        const eyePulse = Math.sin(Date.now()/200) * 2;
-        this.ctx.fillRect(-18, -10, 15, 6 + eyePulse);
-        this.ctx.fillRect(4, -10, 15, 6 + eyePulse);
-
-        // Veteran Vanguard Scar
-        this.ctx.strokeStyle = "rgba(255,0,0,0.6)";
-        this.ctx.lineWidth = 4;
-        this.ctx.beginPath(); this.ctx.moveTo(15, -35); this.ctx.lineTo(25, -5); this.ctx.stroke();
-
-        this.ctx.restore();
-    }
-}
-
+// CLASSES
 class Platform {
-    constructor(x, y, w, h, type, c) {
-        Object.assign(this, {x, y, w, h, type, c, oy: y, off: Math.random()*10, health: 1});
-    }
+    constructor(x, y, w, h, type, c) { Object.assign(this, {x, y, w, h, type, c, oy: y, off: Math.random()*10, health: 1.0}); }
     draw(ctx, camX) {
         if(this.health <= 0) return;
         let sx = this.x - camX;
         ctx.save();
         ctx.globalAlpha = this.health;
-        const grad = ctx.createLinearGradient(sx, this.y, sx, this.y + this.h);
-        grad.addColorStop(0, this.c); grad.addColorStop(1, '#000');
+        ctx.fillStyle = this.type === 'GOAL' ? '#00ff88' : this.c;
+        if(this.type === 'GOAL') ctx.shadowBlur = 40, ctx.shadowColor = '#00ff88';
         
-        if(this.type === 'ZENITH_GATE') {
-            ctx.shadowBlur = 60; ctx.shadowColor = '#00ff88'; ctx.fillStyle = '#00ff88';
-        } else if(this.type === 'CRYSTAL') {
-            ctx.shadowBlur = 25; ctx.shadowColor = '#00d2d3'; ctx.fillStyle = '#7ed6df';
-        } else {
-            ctx.fillStyle = grad;
-        }
-
-        ctx.beginPath(); ctx.roundRect(sx, this.y, this.w, this.h, 14); ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.strokeRect(sx+10, this.y+10, this.w-20, 15);
+        ctx.beginPath(); ctx.roundRect(sx, this.y, this.w, this.h, 12); ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.strokeRect(sx+8, this.y+8, this.w-16, 10);
         ctx.restore();
     }
 }
 
 class Hazard {
-    constructor(x, y, type) {
-        Object.assign(this, {x, y, type, t: 0, vx: 2});
-    }
-    tick() {
-        this.t++;
-        if(this.type === 'SENTINEL') {
-            this.x += Math.sin(this.t * 0.06) * 6;
-        }
-    }
+    constructor(x, y, type) { Object.assign(this, {x, y, type, t: 0}); }
     draw(ctx, camX) {
         let sx = this.x - camX;
         ctx.save();
-        ctx.shadowBlur = 30; ctx.shadowColor = this.type === 'PLASMA_TURRET' ? 'orange' : 'red';
-        
-        if(this.type === 'SPIKE_CLUSTER') {
-            ctx.fillStyle = '#ff4757'; ctx.beginPath(); 
-            for(let i=0; i<3; i++) {
-                ctx.moveTo(sx + i*15, this.y+50); ctx.lineTo(sx + 7 + i*15, this.y); ctx.lineTo(sx + 15 + i*15, this.y+50);
-            }
-            ctx.fill();
-        } else if(this.type === 'SENTINEL') {
-            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(sx+25, this.y+25, 22, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#000'; ctx.fillRect(sx+12, this.y+20, 26, 8);
-        } else if(this.type === 'PLASMA_TURRET') {
-            ctx.fillStyle = '#333'; ctx.fillRect(sx, this.y, 50, 50);
-            if(Math.floor(this.t/100)%2 === 0) {
-                ctx.fillStyle = '#ffea00'; ctx.beginPath(); ctx.arc(sx-20, this.y+25, 12, 0, Math.PI*2); ctx.fill();
-            }
+        ctx.shadowBlur = 20; ctx.shadowColor = '#ff3f34';
+        if(this.type === 'SPIKE') {
+            ctx.fillStyle = '#ff3f34'; ctx.beginPath(); ctx.moveTo(sx, this.y+45); ctx.lineTo(sx+25, this.y); ctx.lineTo(sx+50, this.y+45); ctx.fill();
+        } else if(this.type === 'DRONE') {
+            this.x += Math.sin(Date.now()/500) * 4;
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(sx+25, this.y+25, 20, 0, 7); ctx.fill();
+            ctx.fillStyle = '#000'; ctx.fillRect(sx+10, this.y+20, 30, 5);
+        } else if(this.type === 'CANNON') {
+            ctx.fillStyle = '#333'; ctx.fillRect(sx, this.y, 45, 45);
+            if(Date.now() % 1500 < 20) spawnProj(this.x, this.y+20);
         }
         ctx.restore();
     }
 }
 
-// --- INITIALIZATION ---
-const Vanguard = new ZenithEngine();
+// MAIN LOOP (FIXED SPEED BUG)
+function loop(timestamp) {
+    const dt = timestamp - lastTime;
+    lastTime = timestamp;
 
-function bootstrap_vanguard() {
-    document.getElementById('menu-overlay').style.opacity = '0';
-    setTimeout(() => {
-        document.getElementById('menu-overlay').style.display = 'none';
-        Vanguard.gameState = 'PLAY';
-        Vanguard.buildWorld(Vanguard.currentLvl);
-        Vanguard.render();
-    }, 1000);
+    if(gameState === 'PLAY') {
+        update(dt);
+        render();
+    }
+    loopId = requestAnimationFrame(loop);
 }
+
+function update(dt) {
+    if(player.dead) return build(currentLvl);
+    if(player.win) {
+        gameState = 'MENU';
+        currentLvl++;
+        document.getElementById('menu').style.display = 'flex';
+        renderVault();
+        return;
+    }
+
+    // Horizontal Input
+    if(keys['ArrowLeft']) player.vx -= 1.4;
+    if(keys['ArrowRight']) player.vx += 1.4;
+    player.vx *= PHYSICS.f;
+    player.x += player.vx;
+
+    // Fixed Vertical Jump Engine
+    player.vy += PHYSICS.g;
+    if(player.vy > PHYSICS.maxFall) player.vy = PHYSICS.maxFall;
+    player.y += player.vy;
+
+    if(player.grounded) player.coyote = PHYSICS.coyote; else player.coyote--;
+    if(player.jumpBuff > 0) player.jumpBuff--;
+
+    if(player.jumpBuff > 0 && player.coyote > 0) {
+        player.vy = PHYSICS.j;
+        player.jumpBuff = 0; player.coyote = 0; player.grounded = false;
+    }
+
+    // Collision
+    player.grounded = false;
+    entities.platforms.forEach(p => {
+        if(p.health <= 0) return;
+        if(p.type === 'MOVE') p.y = p.oy + Math.sin(Date.now()/600 + p.off) * 80;
+        
+        if(player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h > p.y && player.y + player.h < p.y + p.h + 25 && player.vy >= 0) {
+            if(p.type === 'GOAL') player.win = true;
+            player.y = p.y - player.h;
+            player.vy = (p.type === 'BOOST') ? -30 : 0;
+            player.grounded = true;
+            if(p.type === 'FRAGILE') {
+                p.health -= 0.05;
+                if(p.health <= 0) explode(p);
+            }
+        }
+    });
+
+    camX += (player.x - camX - w/3.5) * 0.1;
+    entities.hazards.forEach(h => {
+        if(Math.hypot(player.x+26-(h.x+25), player.y+26-(h.y+22)) < 42) player.dead = true;
+    });
+
+    // Update Particles
+    entities.particles.forEach((p, i) => {
+        p.x += p.vx; p.y += p.vy; p.o -= 0.02;
+        if(p.o <= 0) entities.particles.splice(i, 1);
+    });
+
+    if(player.y > h + 400) player.dead = true;
+}
+
+function render() {
+    const b = BIOMES[Math.floor((currentLvl-1)/10) % BIOMES.length];
+    ctx.fillStyle = b.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Parallax
+    ctx.fillStyle = "rgba(255,255,255,0.1)";
+    entities.stars.forEach(s => ctx.fillRect((s.x - camX * s.z) % (w+400), s.y, s.s, s.s));
+
+    entities.platforms.forEach(p => p.draw(ctx, camX));
+    entities.hazards.forEach(h => h.draw(ctx, camX));
+    
+    // Draw Particles
+    entities.particles.forEach(p => {
+        ctx.fillStyle = p.c; ctx.globalAlpha = p.o;
+        ctx.fillRect(p.x - camX, p.y, p.s, p.s);
+    });
+    ctx.globalAlpha = 1;
+
+    // HIGH QUALITY AARON (SKELETAL)
+    const s = SKINS[skinIdx];
+    ctx.save();
+    ctx.translate(player.x - camX + 26, player.y + 26);
+    ctx.rotate(player.vx * 0.04);
+    
+    // Shadow Aura
+    ctx.shadowBlur = 35; ctx.shadowColor = s.glow;
+    ctx.fillStyle = s.c1;
+    ctx.beginPath(); ctx.roundRect(-26, -26, 52, 52, 16); ctx.fill();
+    
+    // Visor
+    ctx.shadowBlur = 0; ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.roundRect(-26, -14, 52, 22, 6); ctx.fill();
+    
+    // Eyes
+    ctx.fillStyle = s.eye; ctx.shadowBlur = 15; ctx.shadowColor = s.eye;
+    ctx.fillRect(-18, -10, 14, 6); ctx.fillRect(4, -10, 14, 6);
+    
+    // Vanguard Mark
+    ctx.strokeStyle = "rgba(255,0,0,0.6)"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(12, -30); ctx.lineTo(20, -5); ctx.stroke();
+    ctx.restore();
+}
+
+// FX
+function explode(p) {
+    for(let i=0; i<12; i++) {
+        entities.particles.push({
+            x: p.x + Math.random()*p.w, y: p.y,
+            vx: (Math.random()-0.5)*10, vy: -Math.random()*10,
+            s: 8+Math.random()*10, o: 1, c: p.c
+        });
+    }
+}
+
+function spawnProj(x, y) {
+    entities.hazards.push({ x, y, type: 'PROJ', vx: -12, draw: (ctx, camX) => {
+        ctx.fillStyle = 'yellow'; ctx.beginPath(); ctx.arc(x-camX, y, 10, 0, 7); ctx.fill();
+    }});
+}
+
+function renderVault() {
+    const v = document.getElementById('vault'); v.innerHTML = '';
+    const unlocked = Math.floor((currentLvl-1)/5) + 1;
+    SKINS.forEach((s, i) => {
+        const slot = document.createElement('div');
+        slot.className = `slot ${i < unlocked ? 'unlocked' : 'locked'} ${i === skinIdx ? 'selected' : ''}`;
+        slot.innerHTML = `<div style="width:40px;height:40px;background:${s.c1};border:2px solid ${s.eye}"></div><div style="font-size:9px;color:#888;margin-top:5px">${s.name}</div>`;
+        if(i < unlocked) slot.onclick = () => { skinIdx = i; renderVault(); };
+        v.appendChild(slot);
+    });
+}
+
+function launch() {
+    document.getElementById('menu').style.display = 'none';
+    gameState = 'PLAY';
+    build(currentLvl);
+    if(!loopId) loop(performance.now());
+}
+
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if(e.code === 'ArrowUp' || e.code === 'Space') player.jumpBuff = PHYSICS.buffer;
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+window.addEventListener('resize', setup);
+
+setup();
 </script>
 </body>
 </html>
