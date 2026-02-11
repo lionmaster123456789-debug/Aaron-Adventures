@@ -2,226 +2,330 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>V5 Aaron Adventures - Hybrid Edition</title>
+    <title>V6 Aaron Adventures - Over-The-Top Edition</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: #fff; }
-        canvas { display: block; }
-        #ui { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
-        #menu { position: absolute; inset: 0; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; text-align: center; }
-        .skin-container { display: flex; gap: 15px; margin: 25px 0; }
-        .skin-btn { width: 50px; height: 50px; border: 2px solid #555; cursor: pointer; border-radius: 12px; transition: 0.3s; }
-        .skin-btn.locked { opacity: 0.2; filter: grayscale(1); cursor: not-allowed; }
-        .skin-btn.active { border-color: #2ecc71; transform: scale(1.2); box-shadow: 0 0 15px #2ecc71; }
-        button#startBtn { background: #2ecc71; color: white; border: none; padding: 15px 40px; font-size: 22px; border-radius: 30px; cursor: pointer; font-weight: bold; }
-        h1 { font-size: 50px; letter-spacing: 5px; color: #eee; margin: 0; }
+        :root { --primary: #2ecc71; --bg: #050508; }
+        body { margin: 0; overflow: hidden; background: var(--bg); font-family: 'Orbitron', sans-serif; color: #fff; }
+        canvas { display: block; filter: saturate(1.2) contrast(1.1); }
+        
+        #overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(20,20,30,0.8) 0%, rgba(5,5,8,1) 100%); z-index: 100; transition: 0.5s; }
+        
+        .main-title { font-size: 80px; font-weight: 900; background: linear-gradient(to bottom, #fff, #444); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 20px rgba(255,255,255,0.3)); margin-bottom: 10px; letter-spacing: 15px; }
+        
+        .skin-vault { display: flex; gap: 25px; background: rgba(255,255,255,0.05); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); margin: 30px 0; }
+        
+        .skin-card { width: 80px; height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; cursor: pointer; transition: 0.4s; position: relative; }
+        .skin-preview { width: 50px; height: 50px; border-radius: 12px; border: 2px solid transparent; transition: 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .skin-card.locked { opacity: 0.2; filter: grayscale(1); cursor: not-allowed; }
+        .skin-card.selected .skin-preview { transform: scale(1.2) translateY(-10px); border-color: var(--primary); box-shadow: 0 0 25px var(--primary); }
+        .skin-name { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+        
+        .start-btn { background: #fff; color: #000; border: none; padding: 20px 60px; font-size: 24px; font-weight: bold; border-radius: 50px; cursor: pointer; transition: 0.3s; letter-spacing: 4px; }
+        .start-btn:hover { background: var(--primary); color: #fff; box-shadow: 0 0 40px var(--primary); transform: scale(1.05); }
+
+        #hud { position: absolute; top: 30px; left: 30px; z-index: 10; pointer-events: none; }
+        .level-tag { font-size: 40px; font-weight: 900; opacity: 0.8; font-style: italic; }
     </style>
+    <link href="https://fonts.googleapis.com" rel="stylesheet">
 </head>
 <body>
 
-<div id="ui">
-    <div style="font-size: 28px; font-weight: bold;">LEVEL <span id="lvlDisplay">1</span></div>
-    <div id="biomeDisplay" style="color: #888; text-transform: uppercase; letter-spacing: 2px;">Vantablack</div>
+<div id="hud">
+    <div class="level-tag">LEVEL <span id="lvlDisplay">1</span></div>
+    <div id="biomeName" style="color: var(--primary); letter-spacing: 5px;">INITIALIZING...</div>
 </div>
 
-<div id="menu">
-    <h1>AARON ADVENTURES</h1>
-    <p>Wähle deinen Skin (Freigeschaltet alle 10 Level):</p>
-    <div id="skinSelect" class="skin-container"></div>
-    <button id="startBtn" onclick="startGame()">START MISSION</button>
+<div id="overlay">
+    <div class="main-title">AARON</div>
+    <div style="letter-spacing: 8px; color: #666; margin-bottom: 20px;">ADVENTURES</div>
+    
+    <div class="skin-vault" id="skinVault">
+        <!-- Skins werden via JS generiert -->
+    </div>
+    
+    <button class="start-btn" onclick="startGame()">ENTER WORLD</button>
 </div>
 
 <canvas id="gameCanvas"></canvas>
 
 <script>
+/**
+ * AARON ADVENTURES - SUPREME GRAPHICS ENGINE
+ * Logic & Rendering Pipeline
+ */
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let width, height, cameraX = 0, currentLevel = 1;
 let gameState = 'menu';
-let playerSkin = 0;
+let selectedSkin = 0;
 
-// Konfiguration
+// Skin Database
 const SKINS = [
-    { name: "Shadow", color: "#1a1a1a", eye: "#ff0000" },
-    { name: "Hunter", color: "#2ecc71", eye: "#fff" },
-    { name: "Ice Walker", color: "#00d2d3", eye: "#2c3e50" },
-    { name: "Magma", color: "#e67e22", eye: "#ff0" },
-    { name: "Cyber", color: "#9b59b6", eye: "#0ff" }
+    { name: "Ghost", color: "#f5f6fa", eye: "#2f3640", glow: "rgba(255,255,255,0.4)", trail: "#fff" },
+    { name: "Neon-V", color: "#1e272e", eye: "#00d2d3", glow: "rgba(0,210,211,0.6)", trail: "#00d2d3" },
+    { name: "Warlord", color: "#c23616", eye: "#fbc531", glow: "rgba(194,54,22,0.6)", trail: "#c23616" },
+    { name: "Void", color: "#191919", eye: "#8c7ae6", glow: "rgba(140,122,230,0.5)", trail: "#8c7ae6" },
+    { name: "Paladin", color: "#f9ca24", eye: "#ffffff", glow: "rgba(249,202,36,0.6)", trail: "#f9ca24" }
 ];
 
 const BIOMES = [
-    { name: "Vantablack", bg: "#050505", ground: "#111", decor: "particles" },
-    { name: "Dschungel", bg: "#0a210f", ground: "#1b4d2e", decor: "waterfall" },
-    { name: "Frost", bg: "#1e272e", ground: "#dff9fb", decor: "snow" },
-    { name: "Lava", bg: "#1a0505", ground: "#c0392b", decor: "bubbles" },
-    { name: "Cyber", bg: "#0f0c29", ground: "#24243e", decor: "grid" }
+    { name: "THE VOID", bg: "#050508", accent: "#333", fog: "#000" },
+    { name: "NEON JUNGLE", bg: "#0a1a10", accent: "#2ecc71", fog: "#0a210f" },
+    { name: "CRYSTAL PEAK", bg: "#0f171e", accent: "#00d2d3", fog: "#1e272e" },
+    { name: "HELLGATE", bg: "#1a0808", accent: "#e74c3c", fog: "#2c0d0d" }
 ];
 
-const player = { x: 100, y: 300, w: 45, h: 45, velX: 0, velY: 0, speed: 7, jump: -17, grounded: false };
-let platforms = [], hazards = [], projectiles = [], decorations = [];
+const player = { x: 150, y: 300, w: 48, h: 48, vx: 0, vy: 0, speed: 8, jump: -18, grounded: false, rot: 0 };
+let platforms = [], hazards = [], particles = [], backgroundNodes = [];
 
-function resize() { 
-    width = canvas.width = window.innerWidth; 
-    height = canvas.height = window.innerHeight; 
+function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
 }
 window.onresize = resize;
 resize();
 
-function initLevel(lvl) {
-    platforms = []; hazards = []; projectiles = []; decorations = [];
-    player.x = 150; player.y = 300; player.velX = 0; player.velY = 0;
-    cameraX = 0;
-    
-    const bIndex = Math.floor((lvl-1)/10) % BIOMES.length;
-    const biome = BIOMES[bIndex];
-    document.getElementById('lvlDisplay').innerText = lvl;
-    document.getElementById('biomeDisplay').innerText = biome.name;
+// --- ENGINE CORE ---
 
-    // Generiere Hintergrund-Objekte
-    for(let i=0; i<30; i++) {
-        decorations.push({ x: Math.random()*5000, y: Math.random()*height, s: Math.random()*3 + 1 });
+function initLevel(lvl) {
+    platforms = []; hazards = []; particles = []; backgroundNodes = [];
+    player.x = 150; player.y = 300; player.vx = 0; player.vy = 0;
+    cameraX = 0;
+
+    const bIdx = Math.floor((lvl-1)/10) % BIOMES.length;
+    const biome = BIOMES[bIdx];
+    document.getElementById('lvlDisplay').innerText = lvl;
+    document.getElementById('biomeName').innerText = biome.name;
+    document.documentElement.style.setProperty('--primary', biome.accent);
+
+    // Parallax Hintergrund
+    for(let i=0; i<60; i++) {
+        backgroundNodes.push({
+            x: Math.random() * 8000,
+            y: Math.random() * height,
+            z: Math.random() * 0.5 + 0.1,
+            size: Math.random() * 3 + 1,
+            op: Math.random() * 0.5
+        });
     }
 
-    let lastX = 0, lastY = 500;
-    platforms.push({ x: 0, y: 550, w: 400, h: 100, type: 'normal' });
+    let lastX = 0, lastY = 550;
+    // Start
+    platforms.push({ x: 0, y: 550, w: 500, h: 150, type: 'start', color: biome.accent });
 
-    for(let i=0; i<15 + lvl; i++) {
-        let pW = 160 + Math.random()*120;
-        let pX = lastX + 130 + Math.random()*110;
-        let pY = lastY + (Math.random()*180 - 90);
-        pY = Math.max(200, Math.min(height-150, pY));
+    for(let i=0; i<20 + lvl; i++) {
+        let pW = 180 + Math.random() * 150;
+        let pX = lastX + 160 + Math.random() * 120;
+        let pY = lastY + (Math.random() * 200 - 100);
+        pY = Math.max(250, Math.min(height-180, pY));
 
-        let type = (i > 3 && Math.random() > 0.8) ? 'moving' : 'normal';
-        platforms.push({ x: pX, y: pY, w: pW, h: 35, type: type, oy: pY, off: Math.random()*10 });
+        let type = 'normal';
+        if(Math.random() > 0.85) type = 'moving';
+        if(Math.random() > 0.9) type = 'glitch';
+
+        platforms.push({ x: pX, y: pY, w: pW, h: 40, type: type, oy: pY, off: Math.random()*10, color: (i%2==0 ? biome.accent : '#fff') });
 
         if(Math.random() > 0.6) {
-            hazards.push({ x: pX + 50, y: pY - 45, w: 40, h: 40, type: Math.random() > 0.5 ? 'drone' : 'cannon', t: 0 });
+            hazards.push({ 
+                x: pX + pW/2, y: pY - 30, 
+                type: Math.random() > 0.5 ? 'drone' : 'pulse', 
+                t: Math.random()*100 
+            });
         }
         lastX = pX; lastY = pY;
     }
-    platforms.push({ x: lastX + 300, y: lastY - 50, w: 100, h: 400, type: 'goal' });
-    updateSkinButtons();
+    // Goal
+    platforms.push({ x: lastX + 400, y: lastY - 50, w: 120, h: 500, type: 'goal' });
+    renderSkinVault();
 }
 
-function update() {
-    if(gameState !== 'playing') return;
-
-    if(keys['ArrowLeft']) player.velX = -player.speed;
-    else if(keys['ArrowRight']) player.velX = player.speed;
-    else player.velX *= 0.8;
-
-    player.velY += 0.85;
-    player.x += player.velX;
-    player.y += player.velY;
-    cameraX += (player.x - cameraX - width/3) * 0.1;
-
-    player.grounded = false;
-    platforms.forEach(p => {
-        if(p.type === 'moving') p.y = p.oy + Math.sin(Date.now()/600 + p.off) * 60;
-        if(player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h > p.y && player.y + player.h < p.y + p.h + 25 && player.velY >= 0) {
-            if(p.type === 'goal') { currentLevel++; initLevel(currentLevel); return; }
-            player.y = p.y - player.h; player.velY = 0; player.grounded = true;
-        }
+function renderSkinVault() {
+    const vault = document.getElementById('skinVault');
+    vault.innerHTML = '';
+    const unlocked = Math.min(5, Math.floor((currentLevel-1)/5) + 1);
+    
+    SKINS.forEach((s, i) => {
+        const card = document.createElement('div');
+        card.className = `skin-card ${i >= unlocked ? 'locked' : ''} ${i === selectedSkin ? 'selected' : ''}`;
+        card.innerHTML = `
+            <div class="skin-preview" style="background:${s.color}"></div>
+            <div class="skin-name">${s.name}</div>
+        `;
+        if(i < unlocked) card.onclick = () => { selectedSkin = i; renderSkinVault(); };
+        vault.appendChild(card);
     });
-
-    hazards.forEach(h => {
-        if(h.type === 'cannon') {
-            if(++h.t % 120 === 0) projectiles.push({ x: h.x, y: h.y + 15, vx: -6 });
-        }
-        if(Math.abs(player.x - h.x) < 35 && Math.abs(player.y - h.y) < 35) initLevel(currentLevel);
-    });
-
-    projectiles.forEach((p, i) => {
-        p.x += p.vx;
-        if(Math.abs(player.x - p.x) < 25 && Math.abs(player.y - p.y) < 25) initLevel(currentLevel);
-    });
-
-    if(player.y > height + 100) initLevel(currentLevel);
 }
+
+// --- RENDERING PIPELINE ---
 
 function draw() {
     const biome = BIOMES[Math.floor((currentLevel-1)/10) % BIOMES.length];
+    
+    // 1. Background Pass
     ctx.fillStyle = biome.bg;
     ctx.fillRect(0, 0, width, height);
-
-    // Deko-Objekte
-    ctx.fillStyle = "rgba(255,255,255,0.1)";
-    decorations.forEach(d => {
-        let dx = (d.x - cameraX * 0.3) % 2000;
-        if(biome.decor === "snow") {
-            ctx.beginPath(); ctx.arc(dx, (d.y + Date.now()/20)%height, d.s, 0, Math.PI*2); ctx.fill();
-        } else if(biome.decor === "waterfall") {
-            ctx.fillStyle = "rgba(52, 152, 219, 0.2)";
-            ctx.fillRect(dx, 0, 40, height);
-        } else {
-            ctx.fillRect(dx, d.y, d.s*2, d.s*2);
-        }
+    
+    backgroundNodes.forEach(n => {
+        ctx.fillStyle = `rgba(255,255,255,${n.op})`;
+        let bx = (n.x - cameraX * n.z) % 3000;
+        ctx.fillRect(bx, n.y, n.size, n.size);
     });
 
-    // Plattformen
+    // 2. Platform Pass
     platforms.forEach(p => {
-        ctx.fillStyle = p.type === 'goal' ? '#2ecc71' : biome.ground;
-        if(p.type === 'goal') ctx.shadowBlur = 20, ctx.shadowColor = '#2ecc71';
-        ctx.beginPath(); ctx.roundRect(p.x - cameraX, p.y, p.w, p.h, 5); ctx.fill();
+        let px = p.x - cameraX;
+        if(px + p.w < -100 || px > width + 100) return;
+
+        if(p.type === 'moving') p.y = p.oy + Math.sin(Date.now()/500 + p.off) * 50;
+
+        // Platform Style
+        const grad = ctx.createLinearGradient(px, p.y, px, p.y + p.h);
+        if(p.type === 'goal') {
+            ctx.shadowBlur = 40; ctx.shadowColor = '#2ecc71';
+            ctx.fillStyle = '#2ecc71';
+        } else {
+            grad.addColorStop(0, p.color);
+            grad.addColorStop(1, '#000');
+            ctx.fillStyle = grad;
+        }
+
+        ctx.beginPath();
+        ctx.roundRect(px, p.y, p.w, p.h, 8);
+        ctx.fill();
+        
+        // Edge Highlight
+        ctx.strokeStyle = "rgba(255,255,255,0.3)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px, p.y, p.w, 1);
         ctx.shadowBlur = 0;
     });
 
-    // Gegner (Verbessert)
+    // 3. Hazard Pass
     hazards.forEach(h => {
-        ctx.fillStyle = "#333";
-        ctx.beginPath(); ctx.roundRect(h.x - cameraX, h.y, 40, 40, 8); ctx.fill();
-        ctx.fillStyle = (Date.now() % 400 > 200) ? "#ff0000" : "#600"; // Pulsierender Kern
-        ctx.beginPath(); ctx.arc(h.x - cameraX + 20, h.y + 20, 8, 0, Math.PI*2); ctx.fill();
+        let hx = h.x - cameraX;
+        ctx.fillStyle = "#111";
+        ctx.save();
+        ctx.translate(hx, h.y);
+        ctx.rotate(Date.now()/1000);
+        // Drone Core
+        ctx.shadowBlur = 15; ctx.shadowColor = "red";
+        ctx.fillStyle = "#ff4757";
+        ctx.beginPath();
+        for(let i=0; i<4; i++) {
+            ctx.rotate(Math.PI/2);
+            ctx.fillRect(-15, -15, 10, 10);
+        }
+        ctx.restore();
     });
 
-    // Projektile
-    ctx.fillStyle = "#f1c40f";
-    projectiles.forEach(p => { ctx.beginPath(); ctx.arc(p.x - cameraX, p.y, 8, 0, Math.PI*2); ctx.fill(); });
+    // 4. Player Pass (High Detail)
+    const skin = SKINS[selectedSkin];
+    const targetRot = player.vx * 0.05;
+    player.rot += (targetRot - player.rot) * 0.1;
 
-    // Aaron (Abgerundet & Seriös)
-    const skin = SKINS[playerSkin];
     ctx.save();
-    ctx.translate(player.x - cameraX + 22.5, player.y + 22.5);
+    ctx.translate(player.x - cameraX + 24, player.y + 24);
+    ctx.rotate(player.rot);
+    
+    // Glow Layer
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = skin.glow;
+    
+    // Head Base
     ctx.fillStyle = skin.color;
-    ctx.beginPath(); ctx.roundRect(-22.5, -22.5, 45, 45, 12); ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.stroke();
-    // Augen
+    ctx.beginPath();
+    ctx.roundRect(-24, -24, 48, 48, 14);
+    ctx.fill();
+    
+    // Face Details (Serious)
+    ctx.shadowBlur = 0;
     ctx.fillStyle = skin.eye;
-    ctx.fillRect(-12, -12, 10, 5); ctx.fillRect(4, -12, 10, 5);
+    // Eyes
+    ctx.fillRect(-16, -14, 12, 4);
+    ctx.fillRect(6, -14, 12, 4);
+    // Scar/Detail
+    ctx.strokeStyle = "rgba(0,0,0,0.4)";
+    ctx.beginPath(); ctx.moveTo(10, -20); ctx.lineTo(15, -5); ctx.stroke();
+    
     ctx.restore();
+
+    // 5. FX Pass (Particles)
+    if(Math.abs(player.vx) > 1) {
+        particles.push({ x: player.x+20, y: player.y+40, s: 5, l: 20, c: skin.trail });
+    }
+    particles.forEach((p, i) => {
+        p.l--; p.y += 1;
+        ctx.fillStyle = p.c;
+        ctx.globalAlpha = p.l / 20;
+        ctx.fillRect(p.x - cameraX, p.y, p.s, p.s);
+        if(p.l <= 0) particles.splice(i, 1);
+    });
+    ctx.globalAlpha = 1;
 
     update();
     requestAnimationFrame(draw);
 }
 
-function updateSkinButtons() {
-    const container = document.getElementById('skinSelect');
-    container.innerHTML = '';
-    const unlockedCount = Math.floor((currentLevel-1)/10) + 1;
-    SKINS.forEach((s, i) => {
-        const div = document.createElement('div');
-        div.className = `skin-btn ${i >= unlockedCount ? 'locked' : ''} ${i === playerSkin ? 'active' : ''}`;
-        div.style.background = s.color;
-        if(i < unlockedCount) div.onclick = () => { playerSkin = i; updateSkinButtons(); };
-        container.appendChild(div);
+function update() {
+    if(gameState !== 'playing') return;
+
+    // Physics
+    if(keys['ArrowLeft']) player.vx = -player.speed;
+    else if(keys['ArrowRight']) player.vx = player.speed;
+    else player.vx *= 0.85;
+
+    player.vy += 0.8;
+    player.x += player.vx;
+    player.y += player.vy;
+
+    cameraX += (player.x - cameraX - width/3) * 0.1;
+
+    // Collision Logic
+    player.grounded = false;
+    platforms.forEach(p => {
+        if(player.x + player.w > p.x && player.x < p.x + p.w && 
+           player.y + player.h > p.y && player.y + player.h < p.y + p.h + 20 && player.vy >= 0) {
+            
+            if(p.type === 'goal') {
+                currentLevel++;
+                gameState = 'menu';
+                document.getElementById('overlay').style.display = 'flex';
+                initLevel(currentLevel);
+                return;
+            }
+            player.y = p.y - player.h;
+            player.vy = 0;
+            player.grounded = true;
+        }
+    });
+
+    // Death
+    if(player.y > height + 200) initLevel(currentLevel);
+    hazards.forEach(h => {
+        if(Math.hypot(player.x+24 - h.x, player.y+24 - h.y) < 40) initLevel(currentLevel);
     });
 }
 
 const keys = {};
 window.onkeydown = (e) => {
     keys[e.code] = true;
-    if((e.code === 'ArrowUp' || e.code === 'Space') && player.grounded) player.velY = player.jump;
+    if((e.code === 'ArrowUp' || e.code === 'Space') && player.grounded) player.vy = player.jump;
 };
 window.onkeyup = (e) => keys[e.code] = false;
 
 function startGame() {
-    document.getElementById('menu').style.display = 'none';
-    if(gameState === 'menu') {
-        gameState = 'playing';
-        initLevel(currentLevel);
-        draw();
-    }
+    document.getElementById('overlay').style.opacity = '0';
+    setTimeout(() => {
+        document.getElementById('overlay').style.display = 'none';
+        if(gameState === 'menu') {
+            gameState = 'playing';
+            draw();
+        }
+    }, 500);
 }
-updateSkinButtons();
+
+initLevel(1);
 </script>
 </body>
 </html>
